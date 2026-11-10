@@ -102,8 +102,8 @@ const Main = (function () {
   // multiplayer: every peer builds the identical game from the host's setup (lockstep)
   function startNet(setup, net) {
     const def = MAPS.find(m => m.id === setup.mapId) || MAPS[1];
-    return start(() => { const g = setupSkirmish({ mapId: def.id, players: setup.players.map(p => Object.assign({}, p)), money: setup.money, seed: setup.seed, lockstep: true, local: setup.local, noAiSpecials: false });
-      g.cfg.label = 'معركة جماعية: ' + def.n; g.cfg.setup = { kind: 'net', c: { camo: Eco.camo() } }; g.net = net; g.players.forEach((p, i) => { p.nick = setup.players[i].name; }); return g; },
+    return start(() => { const g = setupSkirmish({ mapId: def.id, players: setup.players.map(p => Object.assign({}, p)), money: setup.money, seed: setup.seed, size: setup.size || 1, lockstep: true, local: setup.local, noAiSpecials: false });
+      g.cfg.label = 'معركة جماعية: ' + def.n; g.cfg.setup = { kind: 'net', c: { camo: Eco.camo(), size: setup.size || 1 } }; g.net = net; g.players.forEach((p, i) => { p.nick = setup.players[i].name; }); return g; },
       { tod: setup.tod, fast: true, info: { mode: 'معركة جماعية — شبكة محلية', map: def.n, ac: MODE_AC.mp, chips: [setup.players.length + ' لاعبين', '$' + fmN(setup.money)] }, beforeEnter: net && net.ready ? g => net.ready(g) : null, onFail: net && net.fail });
   }
   function restart() { const s = G && G.cfg.setup; if (!s) { UI.mainMenu(); return; } if (s.kind === 'skirm') startSkirmish(s.c); else if (s.kind === 'surv') startSurvival(s.c);  else if (s.kind === 'tut') startTutorial(); else UI.mainMenu(); }
@@ -178,7 +178,7 @@ const Main = (function () {
   // rebuild a whole battle from a save object (used by "continue", hot reload and network resync)
   function gameFromSave(S, o) {
     o = o || {}; const st = S.setup || {}; const mapId = S.mapId || (st.c && st.c.map);
-    let map; { const def = sizedDef(MAPS.find(m => m.id === mapId) || MAPS[0], st.kind === 'skirm' && st.c ? st.c.size : 1); map = generateSkirmishMap(def, st.kind === 'surv' ? 2 : S.players.length); }
+    let map; { const def = sizedDef(MAPS.find(m => m.id === mapId) || MAPS[0], (st.kind === 'skirm' || st.kind === 'net') && st.c ? st.c.size : 1); map = generateSkirmishMap(def, st.kind === 'surv' ? 2 : S.players.length); }
     const g = new Game({ mode: S.mode, money: 0, local: o.local !== undefined ? o.local : S.players.findIndex(p => p.human), label: (S.label || '').split(' — ')[0], setup: st, seed: o.seed, lockstep: !!o.lockstep }, map); g.cfg.daily = S.daily || null; g.cfg.chal = S.chal || null;
     for (const i of S.trees || []) map.removeTree(i);
     S.players.forEach(p => { const pl = g.addPlayer({ f: p.f, col: p.col, team: p.team, human: p.human, ai: p.aiLevel, popCap: p.popCap, start: p.start, name: p.name, noElite: !Object.keys(p.specials || {}).length }); Object.assign(pl, { money: p.money, iron: p.iron || 0, parts: p.parts || 0, xp: p.xp, rank: p.rank, upg: p.upg || {}, stats: p.stats, superReady: p.superReady, research: p.research, specUsed: p.specUsed || {}, genXp: p.genXp || {}, genHurt: p.genHurt || {}, alive: p.alive !== false }); if (p.waves) pl.waves = 1; if (p.dropped) pl.dropped = true; pl.pcd = {}; for (const k in p.pcd || {}) pl.pcd[k] = p.pcd[k]; pl.pmc = null; });

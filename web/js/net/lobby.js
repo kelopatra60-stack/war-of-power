@@ -68,7 +68,20 @@ const Lobby = (function () {
     render(Net.lobby); drawChat();
   }
   function addChat(c) { chat.push(c); while (chat.length > 40) chat.shift(); drawChat(); if (!c.sys) SND.ui('tick'); }
-  function drawChat() { const b = rs && rs.querySelector('#lchat'); if (!b || !b.isConnected) return; b.innerHTML = chat.map(c => c.sys ? `<div class="muted">• ${esc(c.m)}</div>` : `<div><b style="color:var(--acl)">${esc(c.n)}:</b> ${esc(c.m)}</div>`).join(''); b.scrollTop = b.scrollHeight; }
+  function drawChat() { const b = rs && rs.querySelector('#lchat'); if (!b || !b.isConnected) return; b.innerHTML = chat.map(c => c.sys ? `<div class="muted">• ${c.n ? '<b class="notr">' + esc(c.n) + '</b> ' : ''}<span>${esc(c.m)}</span></div>` : `<div><b class="notr" style="color:var(--acl)">${esc(c.n)}:</b> <span class="notr">${esc(c.m)}</span></div>`).join(''); b.scrollTop = b.scrollHeight; }
+  /* ---------- «⚙ إعدادات الخريطة»: the same choices as a skirmish — the host changes them, everyone else sees them ---------- */
+  const SIZE_O = [[0.75, 'صغيرة'], [1, 'متوسطة'], [1.5, 'كبيرة'], [2, 'ضخمة'], [2.6, 'ضخمة جداً']];
+  const SIZE_N = {}; for (const [v, n] of SIZE_O) SIZE_N[v] = n;
+  const TOD_O = [['day', 'نهار'], ['dusk', 'غروب'], ['night', 'ليل']]; const TOD_L = { day: 'نهار', dusk: 'غروب', night: 'ليل' };
+  const MONEY_O = [[5000, '5,000'], [10000, '10,000'], [20000, '20,000'], [50000, '50,000']], META_O = [[1, 'مسموحة'], [0, 'ممنوعة']];
+  function mapSettings() {
+    const l = Net.lobby; if (!l) return; const host = Net.isHost;
+    const row = (lab, k, opts, v) => `<div class="frow"><label>${lab}</label>${host ? K.seg(k, opts, v) : '<b class="lsv">' + esc((opts.find(o => String(o[0]) === String(v)) || opts[0])[1]) + '</b>'}</div>`;
+    const html = `<div class="lmset"><h3>⚙ إعدادات الخريطة</h3>${host ? '<p class="muted">تُطبَّق على كل اللاعبين في هذه المعركة.</p>' : '<p class="muted">يختارها المضيف.</p>'}
+      ${row('الحجم', 'size', SIZE_O, l.size || 1)}${row('المال البدائي', 'money', MONEY_O, l.money)}${row('الوقت', 'tod', TOD_O, l.tod)}${row('وحدات النخبة', 'meta', META_O, l.meta)}
+      ${host ? '<p class="muted lmhint">الخريطة الأكبر تعني معارك أطول — والضخمة جداً تحتاج جهازاً قوياً.</p>' : ''}</div>`;
+    K.box(html, [{ l: 'تم', cls: 'pri' }], { cls: 'lmbox', bind: d => { if (host) K.segBind(d, (k, v) => Net.L.set(k, v)); } });
+  }
   function render(l) {
     if (!rs || !rs.isConnected || !l) return; const host = Net.isHost, me = Net.myId;
     rs.querySelector('#lcount').textContent = '(' + l.slots.length + '/6)';
@@ -82,11 +95,9 @@ const Lobby = (function () {
     rs.querySelectorAll('#lslots svg').forEach(e => e.style.cssText = 'width:26px;height:26px;flex:0 0 26px');
     const maps = MAPS.filter(m => m.max >= Math.max(2, l.slots.length) && (!host || m.id === l.map || Eco.owns('map', m.id))); // the host plays on maps they own
     rs.querySelector('#lset').innerHTML = `<div class="maps">${maps.map(m => `<button class="mapc ${m.id === l.map ? 'on' : ''}" data-m="${m.id}" ${host ? '' : 'disabled style="pointer-events:none"'}><canvas width="140" height="56" data-prev="${m.id}"></canvas><b>${m.n}</b><span>حتى ${m.max} لاعبين</span></button>`).join('')}</div>
-      <div class="frow" style="margin-top:8px"><label>المال</label>${host ? K.seg('money', [[5000, '5k'], [10000, '10k'], [20000, '20k'], [50000, '50k']], l.money) : '<span class="muted">$' + fm(l.money) + '</span>'}</div>
-      <div class="frow" style="margin-top:6px"><label>الوقت</label>${host ? K.seg('tod', [['day', 'نهار'], ['dusk', 'غروب'], ['night', 'ليل']], l.tod) : '<span class="muted">' + ({ day: 'نهار', dusk: 'غروب', night: 'ليل' }[l.tod] || '') + '</span>'}</div>
-      <div class="frow" style="margin-top:6px"><label>وحدات النخبة</label>${host ? K.seg('meta', [[1, 'مسموحة'], [0, 'ممنوعة']], l.meta) : '<span class="muted">' + (l.meta ? 'مسموحة' : 'ممنوعة') + '</span>'}</div>`;
+      <div class="lsum"><span>${esc(SIZE_N[l.size || 1] || SIZE_N[1])}</span><span>$${fm(l.money)}</span><span>${esc(TOD_L[l.tod] || TOD_L.day)}</span><span>${l.meta ? 'النخبة مسموحة' : 'بلا نخبة'}</span><button class="btn sm" data-a="mset">⚙ إعدادات الخريطة</button></div>`;
     rs.querySelectorAll('#lset [data-m]').forEach(b => b.onclick = () => { SND.ui('click'); Net.L.setMap(b.dataset.m); });
-    K.segBind(rs.querySelector('#lset'), (k, v) => Net.L.set(k, v));
+    rs.querySelector('#lset [data-a="mset"]').onclick = () => { SND.ui('click'); mapSettings(); };
     rs.querySelectorAll('#lset canvas[data-prev]').forEach(c => { const def = MAPS.find(m => m.id === c.dataset.prev); Menus.preview(def, url => { if (!url || !c.isConnected) return; const im = new Image(); im.onload = () => { const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(im, 0, 0, c.width, c.height); }; im.src = url; }); });
   }
   return { open, home, choose, online, room, joinCode, errMsg };

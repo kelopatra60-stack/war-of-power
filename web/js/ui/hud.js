@@ -68,7 +68,7 @@ const UI = (function () {
     closeCtx(true); onSelect([]);
     mmCanvas = $('mm'); mmCtx = mmCanvas.getContext('2d'); const m = G.map; batMeta = {}; frozen = false; $('frzbar').classList.add('hid'); $('bFreeze').classList.remove('on'); $('bFreeze').classList.toggle('hid', !!G.net); $('gembar').classList.add('hid');
     const img = minimapImage(m); const base = document.createElement('canvas'); base.width = m.w; base.height = m.h; base.getContext('2d').putImageData(new ImageData(img, m.w, m.h), 0, 0); mmBase = base; sizeMini();
-    $('bSpeed').textContent = '×' + G.speed; $('bSpeed').classList.toggle('hid', !!G.net); $('bChat').classList.toggle('hid', !G.net); $('bMute').classList.toggle('muted', Settings.popups === false); $('chatlog').innerHTML = ''; $('chatbar').classList.add('hid'); $('netst').classList.toggle('hid', !G.net);
+    $('bSpeed').textContent = '×' + G.speed; $('bSpeed').classList.toggle('hid', !!G.net); $('bChat').classList.toggle('hid', !G.net); $('bMute').classList.toggle('muted', Settings.popups === false); chatHist.length = 0; chatUnread = 0; chatBadge(); chatShow(false); $('netst').classList.toggle('hid', !G.net);
     $('wavebar').classList.toggle('hid', G.mode !== 'survival'); $('hud').classList.toggle('wave', G.mode === 'survival');
     hudUpdate(true); fitTopbar(true); requestAnimationFrame(() => fitTopbar(true));
   }
@@ -493,9 +493,12 @@ const UI = (function () {
     $('bMM').onclick = ev => { ev.stopPropagation(); SND.ui('click'); const s = mmSize(); Settings.mm = s === 0 ? 3 : s - 1; saveSettings(); sizeMini(); };
     $('gemAct').onclick = ev => { ev.stopPropagation(); useGems(); };
     $('bMute').onclick = ev => { ev.stopPropagation(); Settings.popups = Settings.popups === false; saveSettings(); $('bMute').classList.toggle('muted', !Settings.popups); if (!Settings.popups) $('alerts').innerHTML = ''; SND.ui('click'); const t = el('div', 'toast info', Settings.popups ? 'الإشعارات المنبثقة تظهر' : 'الإشعارات المنبثقة مكتومة'); $('alerts').prepend(t); setTimeout(() => t.remove(), 1600); };
-    $('bChat').onclick = ev => { ev.stopPropagation(); const bar = $('chatbar'); bar.classList.toggle('hid'); if (!bar.classList.contains('hid')) setTimeout(() => $('chatin2').focus(), 30); };
-    const say = () => { const i = $('chatin2'); const m = i.value.trim(); if (m && typeof Net !== 'undefined') Net.L.chat(m); i.value = ''; $('chatbar').classList.add('hid'); };
-    $('chatgo').onclick = ev => { ev.stopPropagation(); say(); }; $('chatin2').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') say(); if (e.key === 'Escape') $('chatbar').classList.add('hid'); });
+    $('bChat').onclick = ev => { ev.stopPropagation(); SND.ui('click'); chatShow(!chatOpen()); };
+    const say = m => { m = String(m || '').trim(); if (m && typeof Net !== 'undefined') Net.L.chat(m); };
+    const typed = () => { const i = $('chatin2'); say(i.value); i.value = ''; chatShow(false); };
+    $('chatgo').onclick = ev => { ev.stopPropagation(); typed(); }; $('chatin2').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') typed(); if (e.key === 'Escape') chatShow(false); });
+    $('chatqk').innerHTML = CHAT_QK.map((q, i) => `<button data-q="${i}">${esc(q)}</button>`).join('');
+    $('chatqk').onclick = ev => { const b = ev.target.closest('[data-q]'); if (!b) return; ev.stopPropagation(); SND.ui('click'); say(CHAT_QK[+b.dataset.q]); chatShow(false); };
     $('bSpeed').onclick = () => { if (!G || G.net) return; SND.ui('click'); const sp = [1, 1.5, 2, 3]; G.speed = sp[(sp.indexOf(G.speed) + 1) % sp.length]; $('bSpeed').textContent = '×' + G.speed; };
     $('bHome').onclick = ev => { ev.stopPropagation(); Input.jumpHome(); SND.ui('click'); };
     $('ctxx').onclick = ev => { ev.stopPropagation(); closeCtx(); };
@@ -505,9 +508,31 @@ const UI = (function () {
   }
   function frame(dt) { if (!G) return; hudT -= dt; if (hudT <= 0) { hudT = 0.12; hudUpdate(); } mmT -= dt; if (mmT <= 0) { mmT = 0.25; minimap(); } }
   // multiplayer chat lines over the battlefield (fade after a few seconds)
+  /* ---------- in-game chat (network games): messages on the left above the minimap; the button opens a panel with the
+     recent messages, quick phrases (one tap, no typing in the middle of a fight) and a text box; unread count on the button ---------- */
+  const CHAT_QK = ['هجوم! ⚔', 'دافعوا عن القاعدة!', 'ساعدوني!', 'انتظروا', 'تراجعوا', 'أحسنتم 👍', 'GG'];
+  const chatHist = []; let chatUnread = 0;
+  const chatOpen = () => !$('chatbar').classList.contains('hid');
+  function chatLine(c, keep) { // quick phrases are translated for the reader; names and typed text stay exactly as written
+    const qk = CHAT_QK.indexOf(c.m) >= 0;
+    const line = el('div', c.sys ? 'cl sys' : 'cl' + (c.me ? ' me' : ''), c.sys ? (c.n ? '<b class="notr">' + esc(c.n) + '</b> ' : '') + '<span>' + esc(c.m) + '</span>' : `<b class="notr">${esc(c.n || '')}:</b> <span${qk ? '' : ' class="notr"'}>${esc(c.m)}</span>`);
+    if (!keep) setTimeout(() => { line.classList.add('out'); setTimeout(() => line.remove(), 600); }, 9000);
+    return line;
+  }
+  function chatBadge() { const n = $('chatn'); if (!n) return; n.textContent = chatUnread > 9 ? '9+' : String(chatUnread); n.classList.toggle('hid', !chatUnread); }
+  function chatShow(open) {
+    const bar = $('chatbar'), box = $('chatlog'); if (!bar || !box) return; bar.classList.toggle('hid', !open); box.classList.toggle('open', open); box.innerHTML = '';
+    if (!open) return;
+    for (const c of chatHist) box.appendChild(chatLine(c, true));
+    document.documentElement.style.setProperty('--cbh', (bar.offsetHeight + 8) + 'px'); box.scrollTop = box.scrollHeight;
+    chatUnread = 0; chatBadge();
+    if (!(window.matchMedia && matchMedia('(pointer: coarse)').matches)) setTimeout(() => $('chatin2').focus(), 30); // on a phone the keyboard would cover the battle: tap the box to type
+  }
   function netChat(c) {
-    const box = $('chatlog'); if (!box || !G) return; const line = el('div', c.sys ? 'cl sys' : 'cl', c.sys ? esc(c.m) : `<b>${esc(c.n || '')}:</b> ${esc(c.m)}`);
-    box.appendChild(line); while (box.children.length > 6) box.firstChild.remove(); if (!c.sys) SND.ui('tick'); setTimeout(() => { line.classList.add('out'); setTimeout(() => line.remove(), 600); }, 9000);
+    const box = $('chatlog'); if (!box || !G) return; chatHist.push(c); if (chatHist.length > 40) chatHist.shift();
+    if (chatOpen()) { box.appendChild(chatLine(c, true)); box.scrollTop = box.scrollHeight; }
+    else { box.appendChild(chatLine(c, false)); while (box.children.length > 6) box.firstChild.remove(); if (!c.sys && !c.me) { chatUnread++; chatBadge(); } }
+    if (!c.sys && !c.me) SND.ui('tick');
   }
   const kit = { $, el, esc, fm, acv, tcv, gcv, hexRgb, icon, showScreen, hideScreens, top, bind, seg, segBind, box, confirmBox, toast, svgI };
   return { sizeMini, fitTopbar, netChat, init, matchEnded, title: () => Menus.title(), mainMenu: () => Menus.hub(), pauseMenu, enterGame, exitGame, toast, achToast, blocking, onSelect, ack, unitReady, placeMode, targetMode, pause, gameOver, frame,  showScreen, hideScreens,      get ctx() { return cx; },  get paused() { return paused; }, set paused(v) { paused = v; }, get modal() { return modal; }, $, kit };

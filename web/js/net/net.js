@@ -4,9 +4,14 @@
    ============================================================ */
 'use strict';
 /* ===== LAN multiplayer: transport (Android bridge or WebSocket), room protocol, deterministic lockstep ===== */
-const NET_VER = 'TW2';
+const NET_VER = 'TW3'; // TW3: map size in online rooms, relay broadcast — older versions cannot join (they would build a different battle)
 const Net = (function () {
-  const DELAY = 3, ACK_EVERY = 10, HASH_EVERY = 60, STALL = 60, DROP_MS = 15000;
+  const MAP_SIZES = [0.75, 1, 1.5, 2, 2.6]; // the same choices as a skirmish (js/ui/menus.js → إعدادات الخريطة)
+  const DELAY = 3, ACK_EVERY = 10, HASH_EVERY = 60, STALL = 90, DROP_MS = 15000; // STALL: the host waits only for a guest more than 3 s behind
+  /* Smooth play on a shaky link: a guest keeps a few ticks of the host's bundles in hand (jbuf). It watches how long bundles go
+     missing; after a long gap it holds more ticks back (up to JB_MAX ≈ 0.5 s) so the next gap passes without a freeze, and on a
+     calm link it slowly returns to DELAY + 1. Only *when* ticks run changes, never what they contain: the battle stays identical. */
+  const JB_MAX = 15, JB_RELAY = 8; let jbuf = DELAY + 1, lastArr = 0, gapHi = 0, gapT = 0, calm = 0, viaRelay = false; const stat = { stall: 0, ticks: 0, jbufMax: DELAY + 1, hostWait: 0 }; // a relayed link starts with ~0.27 s in hand
   let tr = null, st = 'off', myId = -1, hostId = -1, isHost = false, peers = [], lobby = null, welcome = null, nativeH = null, wantClose = false;
   const ui = { lobby: null, status: null, chat: null, hosts: null, closed: null };
   const hosts = new Map();
@@ -34,15 +39,16 @@ const Net = (function () {
       welcome = { res: v => { if (!done) { done = true; res(v); } }, rej: fail };
       const hello = () => raw('#hello|' + clean(name) + '|' + (wantHost ? 1 : 0) + '|' + NET_VER);
       if (addr && addr.rtc) { // WebRTC data channel (online room, js/net/rtc.js) — also inside the Android app, so it comes before the LAN bridge
-        const t = addr.rtc; const cid = ++connId; tr = { send: l => t.send(l), close: () => t.close() };
+        const t = addr.rtc; const cid = ++connId; viaRelay = !!t.relay; tr = { send: l => t.send(l), close: () => t.close() };
         t.on({ open: () => { if (cid === connId) hello(); }, line: l => { if (cid === connId) onLine(l); }, close: () => { if (cid !== connId) return; if (!done) fail('closed'); else onClose(); } });
         t.start();
       } else if (native()) { // hotspot game inside the Android app: NetBridge.java
+        viaRelay = false;
         const [h, p] = String(addr || '127.0.0.1').split(':'); tr = { send: l => TWNative.send(l), close: () => TWNative.disconnect() };
         nativeH = { open: hello, line: onLine, close: () => { if (!done) fail('closed'); else onClose(); }, error: e => fail(e || 'error') };
         try { TWNative.connect(h, +(p || 47700)); } catch (e) { fail('native'); }
       } else {
-        let url; if (!addr) url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws'; else url = 'ws://' + (String(addr).includes(':') ? addr : addr + ':47700') + '/ws';
+        viaRelay = false; let url; if (!addr) url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws'; else url = 'ws://' + (String(addr).includes(':') ? addr : addr + ':47700') + '/ws';
         let ws; try { ws = new WebSocket(url); } catch (e) { fail('ws'); return; }
         tr = { send: l => { if (ws.readyState === 1) ws.send(l); }, close: () => { try { ws.close(); } catch (e) { } } };
         const cid = ++connId; ws.onopen = () => { if (cid === connId) hello(); }; ws.onmessage = e => { if (cid === connId) onLine(String(e.data)); }; ws.onerror = () => { if (cid === connId) fail('error'); }; ws.onclose = () => { if (cid !== connId) return; if (!done) fail('closed'); else onClose(); };
@@ -64,8 +70,8 @@ const Net = (function () {
     if (l[0] === '#') { const f = l.split('|');
       switch (f[0]) {
         case '#welcome': myId = +f[1]; hostId = +f[2]; isHost = myId === hostId; try { peers = JSON.parse(f.slice(3).join('|')); } catch (e) { peers = []; } st = 'lobby'; if (isHost) initLobby(); if (welcome) welcome.res({ id: myId, host: isHost }); welcome = null; emit('status', 'lobby'); if (!isHost) sendInfo(); return;
-        case '#join': peers.push({ id: +f[1], name: f[2] }); if (isHost) { lastSeen.set(+f[1], Date.now()); if (st === 'lobby') { addHuman(+f[1], f[2]); pushLobby(); } } chatEv({ sys: 1, m: f[2] + ' انضم إلى الغرفة' }); return;
-        case '#leave': { const id = +f[1]; const pn = (peers.find(p => p.id === id) || {}).name || ''; peers = peers.filter(p => p.id !== id); if (isHost) { if (st === 'lobby') { lobby.slots = lobby.slots.filter(s => s.peer !== id); pushLobby(); } else dropPeer(id, 'غادر'); } chatEv({ sys: 1, m: pn + ' غادر' }); return; }
+        case '#join': peers.push({ id: +f[1], name: f[2] }); if (isHost) { lastSeen.set(+f[1], Date.now()); if (st === 'lobby') { addHuman(+f[1], f[2]); pushLobby(); } } chatEv({ sys: 1, n: f[2], m: 'انضم إلى الغرفة' }); return;
+        case '#leave': { const id = +f[1]; const pn = (peers.find(p => p.id === id) || {}).name || ''; peers = peers.filter(p => p.id !== id); if (isHost) { if (st === 'lobby') { lobby.slots = lobby.slots.filter(s => s.peer !== id); pushLobby(); } else dropPeer(id, 'غادر'); } chatEv({ sys: 1, n: pn, m: 'غادر' }); return; }
         case '#hostleft': if (st === 'game' || st === 'loading') goOffline('غادر المضيف المعركة — تستمر المعركة ضد الحاسوب'); else { emit('closed', 'أغلق المضيف الغرفة'); close(); } return;
         case '#full': if (welcome) welcome.rej('full'); return; case '#nohost': if (welcome) welcome.rej('nohost'); return; case '#busy': if (welcome) welcome.rej('busy'); return;
         case '#pong': pingMs = Math.round(performance.now() - pingT); return;
@@ -73,7 +79,7 @@ const Net = (function () {
       } }
     const bar = l.indexOf('|'); if (bar < 0) return; const from = +l.slice(0, bar), p = l.slice(bar + 1); if (isHost) lastSeen.set(from, Date.now());
     const c0 = p[0];
-    if (c0 === 'b') { const i = p.indexOf(':'); const k = +p.slice(1, i); let cmds; try { cmds = JSON.parse(p.slice(i + 1)); } catch (e) { cmds = []; } bundles.set(k, cmds); if (k > maxB) maxB = k; return; }
+    if (c0 === 'b') { const i = p.indexOf(':'); const k = +p.slice(1, i); let cmds; try { cmds = JSON.parse(p.slice(i + 1)); } catch (e) { cmds = []; } bundles.set(k, cmds); if (k > maxB) { maxB = k; if (!isHost) arrived(); } return; }
     if (c0 === 'c') { if (!isHost || st !== 'game') return; let c; try { c = JSON.parse(p.slice(1)); } catch (e) { return; } const s = slotOf(from); if (s < 0 || dropped.has(from)) return; c.p = s; pending.push(c); return; }
     if (c0 === 'k') { if (isHost) lastAck.set(from, +p.slice(1)); return; }
     if (c0 === 'h') { if (!isHost) return; const q = p.slice(1).split(':'); const k = +q[0], h = +q[1]; if ((+q[2] || 0) !== ep) return; // a hash computed before the last resync says nothing about the rebuilt match
@@ -96,18 +102,18 @@ const Net = (function () {
   }
   function onClose() { if (wantClose || st === 'off') return; const was = st; tr = null; if (was === 'game' || was === 'loading') goOffline('انقطع الاتصال بالشبكة — تستمر المعركة ضد الحاسوب'); else { st = 'off'; emit('closed', 'انقطع الاتصال بالغرفة'); } }
   /* ---------------- room (host-authoritative) ---------------- */
-  function initLobby() { const last = LS.get('tw_last_v1', null) || {}; lobby = { map: 'forest', money: 10000, tod: 'day', meta: 1, slots: [{ k: 'h', peer: myId, name: clean(Profile.name), f: last.f || 'usa', team: 1, ready: true }] }; for (const p of peers) if (p.id !== myId) addHuman(p.id, p.name); emit('lobby', lobby); }
+  function initLobby() { const last = LS.get('tw_last_v1', null) || {}; lobby = { map: 'forest', money: 10000, tod: 'day', meta: 1, size: 1, slots: [{ k: 'h', peer: myId, name: clean(Profile.name), f: last.f || 'usa', team: 1, ready: true }] }; for (const p of peers) if (p.id !== myId) addHuman(p.id, p.name); emit('lobby', lobby); }
   function addHuman(id, name) { if (lobby.slots.some(s => s.peer === id) || lobby.slots.length >= 6) return; const used = new Set(lobby.slots.map(s => s.f)); const f = FACTION_IDS.find(x => !used.has(x)) || 'rus'; const teams = new Set(lobby.slots.map(s => s.team)); let t = 1; while (teams.has(t)) t++; lobby.slots.push({ k: 'h', peer: id, name: clean(name), f, team: Math.min(t, 6), ready: false }); }
   function pushLobby() { if (!isHost) return; const def = MAPS.find(m => m.id === lobby.map); if (def && lobby.slots.length > def.max) { const big = MAPS.filter(m => m.max >= lobby.slots.length); if (big.length) lobby.map = big[0].id; } toAll(JSON.stringify({ t: 'lobby', l: lobby })); raw('#room|' + clean(Profile.name) + '|6'); emit('lobby', lobby); }
   function sendInfo(ready) { if (isHost) return; const me = lobby && lobby.slots.find(s => s.peer === myId); const last = LS.get('tw_last_v1', null) || {}; toHost(JSON.stringify({ t: 'info', name: clean(Profile.name), f: (sendInfo.f || (me && me.f) || last.f || 'usa'), ready: !!(ready !== undefined ? ready : sendInfo.ready) })); }
   const L = {
     setMap(id) { if (!isHost) return; const d = MAPS.find(m => m.id === id); if (!d || d.max < lobby.slots.length) { UI.toast('هذه الخريطة لا تتسع لكل اللاعبين', 'warn'); return; } lobby.map = id; pushLobby(); },
-    set(k, v) { if (!isHost) return; if (k === 'money') lobby.money = clamp(+v, 2000, 100000); if (k === 'tod') lobby.tod = ['day', 'dusk', 'night'].includes(v) ? v : 'day'; if (k === 'meta') lobby.meta = +v ? 1 : 0; pushLobby(); },
+    set(k, v) { if (!isHost) return; if (k === 'money') lobby.money = clamp(+v, 2000, 100000); if (k === 'tod') lobby.tod = ['day', 'dusk', 'night'].includes(v) ? v : 'day'; if (k === 'meta') lobby.meta = +v ? 1 : 0; if (k === 'size') lobby.size = MAP_SIZES.indexOf(+v) >= 0 ? +v : 1; pushLobby(); },
     addAI() { if (!isHost || lobby.slots.length >= 6) return; const used = new Set(lobby.slots.map(s => s.f)); const f = FACTION_IDS.find(x => !used.has(x)) || 'rus'; const teams = new Set(lobby.slots.map(s => s.team)); let t = 1; while (teams.has(t)) t++; lobby.slots.push({ k: 'ai', f, ai: 1, team: Math.min(t, 6) }); pushLobby(); },
     remove(i) { if (!isHost) return; const s = lobby.slots[i]; if (!s || s.peer === myId) return; if (s.k === 'h') { UI.toast('لا يمكن إزالة لاعب متصل', 'warn'); return; } lobby.slots.splice(i, 1); pushLobby(); },
     slot(i, k, v) { const s = lobby && lobby.slots[i]; if (!s) return; if (isHost) { if (k === 'f' && FACTIONS[v]) s.f = v; if (k === 'team') s.team = clamp(+v, 1, 6); if (k === 'ai' && s.k === 'ai') s.ai = clamp(+v, 0, 3); pushLobby(); } else if (s.peer === myId && k === 'f') { sendInfo.f = v; s.f = v; sendInfo(); emit('lobby', lobby); } },
     ready(v) { sendInfo.ready = !!v; sendInfo(v); },
-    chat(m) { m = String(m || '').trim().slice(0, 120); if (!m) return; const n = clean(Profile.name); chatEv({ n, m }); if (isHost) toAll(JSON.stringify({ t: 'chat', n, m })); else toHost(JSON.stringify({ t: 'chat', n, m, relay: 1 })); },
+    chat(m) { m = String(m || '').trim().slice(0, 120); if (!m) return; const n = clean(Profile.name); chatEv({ n, m, me: 1 }); if (isHost) toAll(JSON.stringify({ t: 'chat', n, m })); else toHost(JSON.stringify({ t: 'chat', n, m, relay: 1 })); },
     start(force) {
       if (!isHost || st !== 'lobby') return false; const sl = lobby.slots; if (sl.length < 2) { UI.toast('أضف لاعباً أو خصماً آلياً أولاً', 'warn'); return false; }
       if (new Set(sl.map(s => s.team)).size < 2) { UI.toast('كل اللاعبين في فريق واحد — غيّر الفرق', 'warn'); return false; }
@@ -116,7 +122,7 @@ const Net = (function () {
       const cols = []; const players = sl.map(s => { let col = FACTIONS[s.f].col; while (cols.includes(col)) col = (col + 1) % 8; cols.push(col);
         if (s.k === 'h') return { f: s.f, col, team: s.team, human: true, name: s.name, peer: s.peer, noElite: !lobby.meta };
         return { f: s.f, col, team: s.team, ai: s.ai, name: FACTIONS[s.f].short + ' (حاسوب)' }; });
-      const setup = { mapId: def.id, players, money: lobby.money, tod: lobby.tod, seed: ((Math.random() * 4294967295) >>> 0) || 7 };
+      const setup = { mapId: def.id, players, money: lobby.money, tod: lobby.tod, size: lobby.size || 1, seed: ((Math.random() * 4294967295) >>> 0) || 7 };
       toAll(JSON.stringify({ t: 'start', s: setup })); raw('#state|ingame'); begin(setup); return true;
     },
   };
@@ -124,6 +130,7 @@ const Net = (function () {
   function slotOf(peer) { if (!setupObj) return -1; return setupObj.players.findIndex(p => p.peer === peer); }
   function begin(setup) {
     setupObj = setup; slot = setup.players.findIndex(p => p.peer === myId); if (slot < 0) { UI.toast('لم يُعثر على مقعدك في المعركة', 'bad'); return; }
+    jbuf = viaRelay ? JB_RELAY : DELAY + 1; lastArr = 0; gapHi = 0; gapT = 0; calm = 0; stat.stall = 0; stat.ticks = 0; stat.jbufMax = jbuf; stat.hostWait = 0;
     endShown = false; bundles = new Map(); pending = []; acc = 0; maxB = -1; lastAck = new Map(); dropped = new Set(); hostHash = new Map(); peerHash = new Map(); doneB = new Map(); needSync = false; ep = 0; loaded = new Set(); goRes = null; stallT = 0; lastSync = -1e9; spect = false;
     const now = Date.now(); for (const p of setup.players) if (p.peer !== undefined) lastSeen.set(p.peer, now);
     st = 'loading'; emit('status', 'loading');
@@ -153,6 +160,12 @@ const Net = (function () {
     for (const u of g.units) { if (u.dead) continue; mix(u.id); mix(Math.round(u.x * 4)); mix(Math.round(u.y * 4)); mix(Math.round(u.hp)); }
     for (const b of g.blds) { mix(b.id); mix(Math.round(b.hp)); } mix(g.proj.length); return h >>> 0;
   }
+  function arrived() {
+    const now = performance.now(); if (lastArr) { const gap = now - lastArr; if (gap > gapHi) gapHi = gap; } lastArr = now;
+    if (now - gapT > 3000) { gapT = now; const want = Math.min(JB_MAX, Math.max(DELAY + 1, Math.ceil(gapHi / (DT * 1000)) + 1)); gapHi = 0;
+      if (want > jbuf) { jbuf = want; calm = 0; } else if (want < jbuf && ++calm >= 4) { jbuf--; calm = 0; } // up at once, down one tick per 12 calm seconds
+      if (jbuf > stat.jbufMax) stat.jbufMax = jbuf; }
+  }
   function runTick(g) {
     const k = g.tick; const cmds = bundles.get(k); if (k >= DELAY && !cmds) return false;
     if (cmds) { for (const c of cmds) Cmd.exec(g, c); bundles.delete(k); doneB.set(k, cmds); if (doneB.size > 240) doneB.delete(doneB.keys().next().value); } // kept: a resync may rewind a peer that ran ahead
@@ -167,14 +180,15 @@ const Net = (function () {
     if (isHost) {
       const now = Date.now(); let minAck = Infinity;
       for (const p of setupObj.players) { if (!p.human || p.peer === myId || p.peer === undefined || dropped.has(p.peer)) continue; if (now - (lastSeen.get(p.peer) || now) > DROP_MS) { dropPeer(p.peer, 'لا يستجيب'); continue; } minAck = Math.min(minAck, lastAck.has(p.peer) ? lastAck.get(p.peer) : 0); }
-      if (minAck !== Infinity && g.tick - minAck > STALL) { stallT += dt; acc = 0; return; } stallT = 0;
+      if (minAck !== Infinity && g.tick - minAck > STALL) { stallT += dt; acc = 0; stat.hostWait++; return; } stallT = 0;
       acc += dt; let n = 0;
       while (acc >= DT && n < 6) { acc -= DT; n++; const k = g.tick + DELAY; const cmds = pending; pending = []; bundles.set(k, cmds); toAll('b' + k + ':' + JSON.stringify(cmds)); runTick(g); }
       if (n >= 6) acc = 0;
     } else {
-      acc += dt; const backlog = maxB - g.tick; let n = 0; const cap = backlog > 90 ? 12 : backlog > DELAY + 3 ? 3 : 1;
-      while (acc >= DT && n < 6) { if (!runTick(g)) { acc = Math.min(acc, DT); break; } acc -= DT; n++; }
-      while (n < cap + 1 && maxB - g.tick > DELAY + 1) { if (!runTick(g)) break; n++; }
+      acc += dt; const backlog = maxB - g.tick; let n = 0; const cap = backlog > 90 ? 12 : backlog > jbuf + 2 ? 3 : 1;
+      const pace = g.tick < DELAY ? DT : backlog < jbuf - 2 ? DT * 1.08 : backlog < jbuf ? DT * 1.04 : DT; // build the buffer up gently (8 % / 4 % slower), never with a freeze
+      while (acc >= pace && n < 6) { if (!runTick(g)) { stat.stall++; acc = Math.min(acc, pace); break; } acc -= pace; n++; stat.ticks++; }
+      while (n < cap + 1 && maxB - g.tick > jbuf) { if (!runTick(g)) break; n++; stat.ticks++; }
     }
     if (performance.now() - pingT > 3000) { pingT = performance.now(); raw('#ping'); }
     if (!endShown && g.tick % 30 === 0 && new Set(g.players.filter(p => p.alive).map(p => p.team)).size <= 1) { endShown = true; if (g.over && (g.spectate || !g.me.alive) && UI.matchEnded) UI.matchEnded(); }
@@ -216,5 +230,5 @@ const Net = (function () {
     const t = await RTC.join(code); try { await connect({ rtc: t }, false, name || Profile.name); } catch (e) { try { t.close(); } catch (x) { } throw e; } roomCode = String(code).toUpperCase(); return roomCode;
   }
   function ips() { try { if (native() && TWNative.ips) return String(TWNative.ips()).split(',').filter(Boolean); } catch (e) { } return servedByHost() ? [location.hostname] : []; }
-  return { online, get roomCode() { return roomCode; }, host, join, leave, scan, hosts: list, ips, native, canHost, servedByHost, status, backToLobby, spectate, L, on: (k, f) => { ui[k] = f; },  get state() { return st; }, get isHost() { return isHost; }, get myId() { return myId; }, get lobby() { return lobby; },   get slot() { return slot; } };
+  return { online, get stats() { return Object.assign({ jbuf }, stat); }, get roomCode() { return roomCode; }, host, join, leave, scan, hosts: list, ips, native, canHost, servedByHost, status, backToLobby, spectate, L, on: (k, f) => { ui[k] = f; },  get state() { return st; }, get isHost() { return isHost; }, get myId() { return myId; }, get lobby() { return lobby; },   get slot() { return slot; } };
 })();

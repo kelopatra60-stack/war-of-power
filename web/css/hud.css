@@ -268,3 +268,16 @@
 #topbar.tf3 #lbtns button span{display:none}
 #topbar.tf4 #powerbar{display:none}#topbar.tf4 .tbtns button{min-width:28px}#topbar.tf4 #armyb button{width:25px}#topbar.tf4 #lbtns button{padding:0 4px}#topbar.tf4 .cap.rs span{min-width:0}
 #topbar.tf5 .res{min-width:0;flex:1 1 auto;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x}#topbar.tf5 .res::-webkit-scrollbar{display:none}
+/* ===== v5 — in-game chat: a panel on the left above the minimap (quick phrases + text box), recent messages above it, unread count on the button ===== */
+#bChat{position:relative}
+#chatn{position:absolute;top:-4px;inset-inline-end:-4px;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:#e5483c;color:#fff;font-size:10.5px;font-weight:900;line-height:17px;text-align:center;box-shadow:0 0 0 2px rgba(20,22,12,.85);pointer-events:none}
+#chatn.hid{display:none}
+#chatbar{left:calc(8px + var(--sl));right:auto;transform:none;bottom:calc(var(--mm) + 18px + var(--sb));width:min(420px,calc(100vw - 16px - var(--sl) - var(--sr)));flex-direction:column;gap:6px}
+#chatbar .chrow{display:flex;gap:6px}
+#chatqk{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+#chatqk::-webkit-scrollbar{display:none}
+#chatqk button{flex:0 0 auto;height:30px;padding:0 12px;border-radius:999px;background:rgba(235,230,190,.13);border:1px solid var(--line2);color:var(--ink);font:inherit;font-weight:800;font-size:12.5px;white-space:nowrap}
+#chatqk button:active{background:rgba(255,216,90,.28)}
+#chatlog.open{bottom:calc(var(--mm) + 18px + var(--sb) + var(--cbh,88px));pointer-events:auto;max-height:min(40vh,230px);overflow-y:auto;scrollbar-width:none}
+#chatlog.open::-webkit-scrollbar{display:none}
+#chatlog .cl.me{background:rgba(34,48,22,.78)}

@@ -811,3 +811,16 @@ html.en .btn.back svg,html.en .bpback svg,html.en .gback svg,html.en .exar,html.
 .sdbox .sdpv .pv{max-width:none}
 .sdbox .dchips,.sdbox .dneed{justify-content:flex-start}
 }
+/* ===== v5 — online room: summary of the map settings + «⚙ إعدادات الخريطة» popup (js/net/lobby.js → mapSettings) ===== */
+.lsum{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px}
+.lsum span{padding:3px 10px;border-radius:999px;background:rgba(30,31,17,.4);border:1px solid var(--line2);font-size:12px;font-weight:800;color:var(--mute)}
+.lsum .btn{margin-inline-start:auto}
+.mbox.lmbox{width:min(560px,calc(100vw - 24px));max-width:none;max-height:calc(100vh - 20px);max-height:calc(100dvh - 20px)}
+.lmset{display:flex;flex-direction:column;gap:9px;text-align:start}
+.lmset h3{margin:0}
+.lmset .muted{margin:0}
+.lmset .frow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.lmset .frow label{min-width:118px;font-weight:900;color:var(--gold2)}
+.lmset .seg{flex-wrap:wrap}
+.lmset .lsv{color:#fff}
+.lmset .lmhint{font-size:12px}

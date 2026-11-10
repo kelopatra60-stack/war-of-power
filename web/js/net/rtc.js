@@ -65,11 +65,11 @@ const RTC = (function () {
         return; }
       if (!c.ok) return; const bar = l.indexOf('|'); if (bar < 0) return; const to = l.slice(0, bar), out = id + '|' + l.slice(bar + 1);
       if (to === 'h') { const hc = cl.get(hostId); if (hc && hc !== c) tx(hc, out); }
-      else if (to === '*') { for (const o of live()) if (o !== c) tx(o, out); }
+      else if (to === '*') { const gs = new Set(); for (const o of live()) if (o !== c) { if (o.grp) gs.add(o.grp); else tx(o, out); } for (const g of gs) g.bcast(out, c.grp === g ? c.id : 0); }
       else { const o = cl.get(+to); if (o && o.ok) tx(o, out); }
     }
     function drop(id) { const c = cl.get(id); if (!c) return; cl.delete(id); if (!c.ok) return; if (id === hostId) { hostId = 0; for (const o of live()) tx(o, '#hostleft'); } else for (const o of live()) tx(o, '#leave|' + id); }
-    function attach(send, close) { const id = next++; cl.set(id, { id, send, close, ok: false, name: '' }); return id; }
+    function attach(send, close, grp) { const id = next++; cl.set(id, { id, send, close, ok: false, name: '', grp: grp || null }); return id; } // grp: relay guests sharing one broker (js/net/relay.js)
     return { attach, recv, drop, closeAll() { for (const c of cl.values()) try { c.close && c.close(); } catch (e) { } cl.clear(); }, get n() { return live().length; }, get state() { return state; } };
   }
   /* ---------- hosting: the room is reachable directly (PeerJS signalling) and through the relay at the same time ---------- */
