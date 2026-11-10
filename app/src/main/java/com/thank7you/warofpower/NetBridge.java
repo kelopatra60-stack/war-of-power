@@ -419,6 +419,22 @@ public class NetBridge {
     /* ------------------------------------------------------------ notifications (friends' messages / invitations) ------------------------------------------------------------ */
     private boolean asked;
 
+    /** While a multiplayer room is open: a foreground service keeps the game (and its connections) alive in the background. */
+    @JavascriptInterface
+    public void keepAlive(final boolean on, final String text) {
+        ui.post(() -> {
+            try {
+                Intent i = new Intent(act, RoomService.class);
+                if (on) {
+                    if (Build.VERSION.SDK_INT >= 33 && act.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
+                        act.requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 7);
+                    i.putExtra("t", text);
+                    if (Build.VERSION.SDK_INT >= 26) act.startForegroundService(i); else act.startService(i);
+                } else act.stopService(i);
+            } catch (Exception ignored) { }
+        });
+    }
+
     @JavascriptInterface
     public void notify(final String title, final String text) {
         ui.post(() -> {

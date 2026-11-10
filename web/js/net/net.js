@@ -12,7 +12,11 @@ const Net = (function () {
   const hosts = new Map();
   // lockstep state
   let endShown = false, setupObj = null, slot = -1, bundles = new Map(), pending = [], acc = 0, maxB = -1, lastAck = new Map(), lastSeen = new Map(), dropped = new Set(), hostHash = new Map(), peerHash = new Map(), doneB = new Map(), needSync = false, ep = 0, loaded = new Set(), goRes = null, goTimer = 0, stallT = 0, lastSync = -1e9, pingMs = 0, pingT = 0, spect = false;
-  const emit = (k, v) => { try { if (ui[k]) ui[k](v); } catch (e) { console.error(e); } };
+  const emit = (k, v) => { if (k === 'status' || k === 'closed') keep(); try { if (ui[k]) ui[k](v); } catch (e) { console.error(e); } };
+  // inside the Android app: while a room is open a small notification keeps the game running in the background (sharing the code in WhatsApp, etc.)
+  let kept = '';
+  function keep() { const on = st !== 'off' && st !== 'connecting'; const txt = on ? TR(isHost ? 'غرفتك مفتوحة — يستطيع أصدقاؤك الانضمام' : 'أنت متصل بغرفة لعب جماعي') : '';
+    if (txt === kept) return; kept = txt; try { if (native() && TWNative.keepAlive) TWNative.keepAlive(on, txt); } catch (e) { } }
   const clean = s => String(s || 'لاعب').replace(/[|\n\r]/g, ' ').trim().slice(0, 18) || 'لاعب';
   const native = () => !!(window.TWNative && typeof TWNative.connect === 'function');
   const servedByHost = () => location.protocol === 'http:' && location.port === '47700';
@@ -47,7 +51,7 @@ const Net = (function () {
     });
   }
   let connId = 0;
-  function close(silent) { roomCode = ''; wantClose = true; connId++; if (tr) { try { tr.close(); } catch (e) { } } tr = null; if (!silent) { st = 'off'; emit('status', 'off'); } }
+  function close(silent) { roomCode = ''; wantClose = true; connId++; if (tr) { try { tr.close(); } catch (e) { } } tr = null; if (!silent) { st = 'off'; emit('status', 'off'); } else keep(); }
   // events from the Android bridge (NetBridge.java)
   window.TWNet = window.TWNet || {}; TWNet._ev = (type, data) => { if (type === 'host') { foundHost(String(data)); return; } const h = nativeH; if (!h) return; if (type === 'open') h.open(); else if (type === 'line') h.line(String(data)); else if (type === 'close') h.close(); else if (type === 'error') h.error(String(data)); };
   TWNet._evs = arr => { for (const l of arr) TWNet._ev('line', l); };

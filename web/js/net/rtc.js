@@ -8,10 +8,12 @@
    · A public signalling server (PeerJS protocol) only introduces the phones: short room code → offer / answer / ICE.
      Game traffic never passes through it, and a self-hosted PeerServer can replace it here.
    · Inside the host, a tiny relay speaks exactly the same line protocol as the LAN relay (#hello/#welcome/#join…),
-     so the lobby and the deterministic lockstep in net.js work unchanged over WebRTC. */
+     so the lobby and the deterministic lockstep in net.js work unchanged over WebRTC.
+   · When a direct link cannot open (most mobile networks), the same room is also reachable through a relay: js/net/relay.js.
+     A guest tries the direct link first and the relay 2 s later; whichever opens first is kept. */
 const NET_SIGNAL = { host: '0.peerjs.com', port: 443, path: '/', key: 'peerjs', secure: true };
-// STUN finds each phone's public address. Some strict mobile networks also need a TURN relay — add it here if you have one.
-const NET_ICE = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }, { urls: 'stun:stun.cloudflare.com:3478' }];
+// STUN finds each phone's public address. When the networks still block a direct link (carrier NAT), js/net/relay.js carries the game instead.
+const NET_ICE = [{ urls: 'stun:stun.cloudflare.com:3478' }, { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }, { urls: 'stun:global.stun.twilio.com:3478' }];
 const RTC = (function () {
   const ABC = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0/O/1/I/L: codes are easy to read aloud and type
   const PFX = () => 'alharb-' + NET_VER.toLowerCase() + '-';
@@ -70,24 +72,41 @@ const RTC = (function () {
     function attach(send, close) { const id = next++; cl.set(id, { id, send, close, ok: false, name: '' }); return id; }
     return { attach, recv, drop, closeAll() { for (const c of cl.values()) try { c.close && c.close(); } catch (e) { } cl.clear(); }, get n() { return live().length; }, get state() { return state; } };
   }
-  /* ---------- hosting ---------- */
-  let room = null; // { code, sig, hub, peers: Map(src → {pc, pend, ready}) }
+  /* ---------- hosting: the room is reachable directly (PeerJS signalling) and through the relay at the same time ---------- */
+  let room = null; // { code, sig, rel, hub, peers: Map(src → {pc, pend, ready}) }
+  const hasRelay = () => typeof Relay !== 'undefined' && Relay.supported();
   function host() {
     return new Promise((res, rej) => {
-      let tries = 0; const hub = Hub(6);
-      const attempt = () => { const code = code5(); let ok = false;
-        const sig = signal(PFX() + code, {
-          open: () => { ok = true; room = { code, sig, hub, peers: new Map() }; res({ code, t: loopback(hub) }); },
-          error: e => { if (e === 'taken' && ++tries < 6) { attempt(); return; } if (!ok) rej(new Error(e)); },
-          msg: (type, src, p) => { if (room && room.sig === sig) onHostSignal(type, src, p); },
-          lost: () => { if (room && room.sig === sig) room.sigLost = true; }, // players already inside stay connected
-        }); };
+      let tries = 0, settled = false; const hub = Hub(6);
+      const attempt = () => {
+        const code = code5(); const r = { code, sig: null, rel: null, hub, peers: new Map() }; let sigDown = false, relDown = !hasRelay();
+        const ready = () => { if (settled) return; settled = true; room = r; res({ code, t: loopback(hub) }); };
+        const down = () => { if (settled || !sigDown || !relDown) return; settled = true; if (r.rel) r.rel.close(); rej(new Error('nosignal')); };
+        r.sig = signal(PFX() + code, {
+          open: ready,
+          error: e => {
+            if (e === 'taken' && !settled && ++tries < 6) { if (r.rel) r.rel.close(); attempt(); return; } // code already used: pick another
+            sigDown = true; if (settled) keepSignal(r); else down();
+          },
+          msg: (type, src, p) => { if (room === r) onHostSignal(type, src, p); },
+          lost: () => { if (room === r) keepSignal(r); }, // players already inside stay connected
+        });
+        if (hasRelay()) r.rel = Relay.host(code, hub, { open: ready, error: () => { relDown = true; down(); } });
+      };
       attempt();
     });
+  }
+  // the signalling socket dropped (network change, screen off): register the same code again so new players can still find the room
+  function keepSignal(r) {
+    if (r.reT || room !== r) return; const n = r.reN = (r.reN || 0) + 1;
+    r.reT = setTimeout(() => { r.reT = 0; if (room !== r) return;
+      const sig = signal(PFX() + r.code, { open: () => { r.reN = 0; }, error: () => keepSignal(r), msg: (type, src, p) => { if (room === r && r.sig === sig) onHostSignal(type, src, p); }, lost: () => keepSignal(r) });
+      r.sig = sig; }, Math.min(20000, 1500 * Math.pow(2, n - 1)));
   }
   function onHostSignal(type, src, p) {
     const r = room;
     if (type === 'OFFER') {
+      if (!window.RTCPeerConnection) { r.sig.send('ANSWER', src, { err: 'nortc' }); return; } // the guest falls back to the relay
       if (p.v !== NET_VER) { r.sig.send('ANSWER', src, { err: 'ver' }); return; }
       if (r.hub.state === 'ingame') { r.sig.send('ANSWER', src, { err: 'busy' }); return; } if (r.hub.n >= 6) { r.sig.send('ANSWER', src, { err: 'full' }); return; }
       const pc = new RTCPeerConnection(iceCfg()); const q = { pc, pend: [], ready: false }; r.peers.set(src, q);
@@ -101,31 +120,45 @@ const RTC = (function () {
     let id = 0; const t = { h: {}, on(h) { t.h = h; },
       start() { id = hub.attach(l => queueMicrotask(() => t.h.line && t.h.line(l)), () => { }); queueMicrotask(() => t.h.open && t.h.open()); },
       send(l) { queueMicrotask(() => hub.recv(id, l)); },
-      close() { hub.drop(id); const r = room; room = null; if (r) setTimeout(() => { try { r.sig.close(); } catch (e) { } for (const q of r.peers.values()) try { q.pc.close(); } catch (e) { } r.hub.closeAll(); }, 400); } };
+      close() { hub.drop(id); const r = room; room = null; if (r) { clearTimeout(r.reT); setTimeout(() => { try { r.sig.close(); } catch (e) { } for (const q of r.peers.values()) try { q.pc.close(); } catch (e) { } r.hub.closeAll(); setTimeout(() => { try { r.rel && r.rel.close(); } catch (e) { } }, 150); }, 400); } } };
     return t;
   }
-  /* ---------- joining ---------- */
+  /* ---------- joining: direct link first, the relay 2 s later (or at once if the direct path fails); the first to open wins ---------- */
+  const HARD = { ver: 1, busy: 1, full: 1 }; // the host itself refused: no point trying another path
   function join(code) {
     code = String(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
     return new Promise((res, rej) => {
       if (code.length !== 5) { rej(new Error('code')); return; }
-      const hostId = PFX() + code, me = hostId + '-' + Math.random().toString(36).slice(2, 8); let pc = null, sig = null, done = false, ready = false; const pend = [];
-      const fail = e => { if (done) return; done = true; clearTimeout(tm); try { sig && sig.close(); } catch (x) { } try { pc && pc.close(); } catch (x) { } rej(new Error(e)); };
-      const tm = setTimeout(() => fail('timeout'), 20000);
-      sig = signal(me, {
-        open: () => {
-          pc = new RTCPeerConnection(iceCfg()); const dc = pc.createDataChannel('tw', { ordered: true });
-          pc.onicecandidate = e => { if (e.candidate) sig.send('CANDIDATE', hostId, { c: e.candidate.toJSON() }); };
-          dc.addEventListener('open', () => { if (done) return; done = true; clearTimeout(tm); setTimeout(() => sig.close(), 4000); res(wrapDC(dc, pc)); });
-          pc.createOffer().then(o => pc.setLocalDescription(o)).then(() => sig.send('OFFER', hostId, { sdp: pc.localDescription.toJSON(), v: NET_VER })).catch(() => fail('rtc'));
-        },
-        error: e => fail(e),
-        msg: (type, src, p) => { if (src !== hostId || done) return;
-          if (type === 'ANSWER') { if (p.err) { fail(p.err); return; } pc.setRemoteDescription(p.sdp).then(() => { ready = true; for (const c of pend) pc.addIceCandidate(c).catch(() => { }); pend.length = 0; }).catch(() => fail('rtc')); }
-          else if (type === 'CANDIDATE' && p.c) { if (ready) pc.addIceCandidate(p.c).catch(() => { }); else pend.push(p.c); } },
-        gone: src => { if (src === hostId) fail('noroom'); },
-      });
+      let done = false, relT = 0, rel = null; const tries = [], errs = [];
+      const pick = () => errs.indexOf('noroom') >= 0 ? 'noroom' : errs.length && errs.every(e => e === 'nosignal') ? 'nosignal' : 'timeout';
+      const end = e => { if (done) return; done = true; clearTimeout(tm); clearTimeout(relT); for (const x of tries) x.cancel(); rej(new Error(e)); };
+      const win = t => { if (done) { try { t.close(); } catch (e) { } return; } done = true; clearTimeout(tm); clearTimeout(relT); for (const x of tries) x.cancel(t); res(t); };
+      const lose = e => { if (done) return; errs.push(e); if (HARD[e]) { end(e); return; } if (!rel && hasRelay()) startRelay(); else if (tries.every(x => x.dead)) end(pick()); };
+      const startRelay = () => { if (rel || done) return; clearTimeout(relT); rel = Relay.join(code, { open: win, error: e => { rel.dead = true; lose(e); } }); tries.push(rel); };
+      const tm = setTimeout(() => end(pick()), 16000);
+      const p2p = window.RTCPeerConnection ? direct(code, { open: win, error: e => { p2p.dead = true; lose(e); } }) : null;
+      if (p2p) tries.push(p2p); if (hasRelay()) { if (p2p) relT = setTimeout(startRelay, 2000); else startRelay(); } else if (!p2p) end('nortc');
     });
   }
-  return { host, join, get code() { return room && room.code; }, supported: () => !!(window.RTCPeerConnection && window.WebSocket) };
+  function direct(code, h) { // the WebRTC data channel to the host · returns { t, dead, cancel(winner) }
+    const hostId = PFX() + code, me = hostId + '-' + Math.random().toString(36).slice(2, 8); let pc = null, sig = null, fin = false, ready = false; const pend = [];
+    const a = { t: null, dead: false, cancel(w) { if (w && w === a.t) return; if (fin) return; fin = true; try { sig && sig.close(); } catch (x) { } try { pc && pc.close(); } catch (x) { } } };
+    const fail = e => { if (fin) return; fin = true; try { sig && sig.close(); } catch (x) { } try { pc && pc.close(); } catch (x) { } h.error(e); };
+    sig = signal(me, {
+      open: () => {
+        pc = new RTCPeerConnection(iceCfg()); const dc = pc.createDataChannel('tw', { ordered: true });
+        pc.onicecandidate = e => { if (e.candidate) sig.send('CANDIDATE', hostId, { c: e.candidate.toJSON() }); };
+        pc.addEventListener('connectionstatechange', () => { if (pc.connectionState === 'failed') fail('rtc'); });
+        dc.addEventListener('open', () => { if (fin) return; fin = true; setTimeout(() => sig.close(), 4000); a.t = wrapDC(dc, pc); h.open(a.t); });
+        pc.createOffer().then(o => pc.setLocalDescription(o)).then(() => sig.send('OFFER', hostId, { sdp: pc.localDescription.toJSON(), v: NET_VER })).catch(() => fail('rtc'));
+      },
+      error: e => fail(e),
+      msg: (type, src, p) => { if (src !== hostId || fin) return;
+        if (type === 'ANSWER') { if (p.err) { fail(p.err); return; } pc.setRemoteDescription(p.sdp).then(() => { ready = true; for (const c of pend) pc.addIceCandidate(c).catch(() => { }); pend.length = 0; }).catch(() => fail('rtc')); }
+        else if (type === 'CANDIDATE' && p.c) { if (ready) pc.addIceCandidate(p.c).catch(() => { }); else pend.push(p.c); } },
+      gone: src => { if (src === hostId) fail('noroom'); },
+    });
+    return a;
+  }
+  return { host, join, get code() { return room && room.code; }, supported: () => !!((window.RTCPeerConnection || hasRelay()) && window.WebSocket) };
 })();

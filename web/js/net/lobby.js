@@ -14,7 +14,7 @@ const Lobby = (function () {
   function choose() { // two ways to play together
     const s = K.showScreen(K.top('اللعب الجماعي') + `<div class="mpch">
       <button class="mpc" data-a="hot"><svg viewBox="0 0 24 24">${MP_ICO.hot}</svg><b>عبر هوسبوت</b><span>بدون إنترنت — أجهزة على نفس الشبكة</span></button>
-      <button class="mpc web" data-a="web"><svg viewBox="0 0 24 24">${MP_ICO.web}</svg><b>أونلاين</b><span>من أي مكان — اتصال مباشر بين الأجهزة</span></button></div>`, 'setup mp', MODE_AC.mp);
+      <button class="mpc web" data-a="web"><svg viewBox="0 0 24 24">${MP_ICO.web}</svg><b>أونلاين</b><span>من أي مكان — اتصال مباشر أو عبر وسيط تلقائياً</span></button></div>`, 'setup mp', MODE_AC.mp);
     K.bind(s, { hot: () => home(), web: () => online() });
   }
   function online() {

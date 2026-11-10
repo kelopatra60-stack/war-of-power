@@ -140,6 +140,7 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        try { stopService(new Intent(this, RoomService.class)); } catch (Exception ignored) { } // the game is closing: no room to keep open
         if (net != null) net.shutdown();
         if (web != null) web.destroy();
         super.onDestroy();
