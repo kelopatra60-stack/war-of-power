@@ -10,24 +10,58 @@ permissions:
 
 jobs:
   apk:
-    runs-on: ubuntu-latest
+    # a fixed image (ubuntu-latest is moving to Ubuntu 26): it already has the Android SDK, Python 3, curl, unzip and gh
+    runs-on: ubuntu-24.04
+    env:
+      GRADLE_VERSION: '8.9'
+      ANDROID_PLATFORM: 'android-34'
+      ANDROID_BUILD_TOOLS: '34.0.0'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
 
+      # no third-party action: use the SDK that comes with the runner, install the command-line tools only if it is missing
       - name: Android SDK
-        uses: android-actions/setup-android@v3
+        run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/android-sdk}}"
+          SM=""
+          for c in "$SDK/cmdline-tools/latest/bin/sdkmanager" "$SDK"/cmdline-tools/*/bin/sdkmanager; do
+            if [ -x "$c" ]; then SM="$c"; break; fi
+          done
+          if [ -z "$SM" ]; then
+            echo "No Android SDK on this runner: installing the command-line tools"
+            mkdir -p "$SDK/cmdline-tools"
+            for v in 13114758 12266719 11076708; do
+              if curl -fsSL -o /tmp/clt.zip "https://dl.google.com/android/repository/commandlinetools-linux-${v}_latest.zip"; then break; fi
+            done
+            unzip -q -o /tmp/clt.zip -d /tmp/clt
+            rm -rf "$SDK/cmdline-tools/latest"
+            mv /tmp/clt/cmdline-tools "$SDK/cmdline-tools/latest"
+            SM="$SDK/cmdline-tools/latest/bin/sdkmanager"
+          fi
+          echo "SDK: $SDK"
+          echo "sdkmanager: $SM"
+          yes | "$SM" --sdk_root="$SDK" --licenses > /dev/null || true
+          if [ ! -d "$SDK/platforms/$ANDROID_PLATFORM" ] || [ ! -d "$SDK/build-tools/$ANDROID_BUILD_TOOLS" ] || [ ! -d "$SDK/platform-tools" ]; then
+            "$SM" --sdk_root="$SDK" "platforms;$ANDROID_PLATFORM" "build-tools;$ANDROID_BUILD_TOOLS" "platform-tools" > /dev/null
+          fi
+          echo "sdk.dir=$SDK" > local.properties
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+          ls "$SDK/platforms" "$SDK/build-tools"
 
+      # Gradle straight from gradle.org (the Android plugin 8.5.2 needs Gradle 8.x)
       - name: Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.9'
+        run: |
+          curl -fsSL -o /tmp/gradle.zip "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
+          unzip -q -o /tmp/gradle.zip -d "$HOME/gradle"
+          echo "$HOME/gradle/gradle-${GRADLE_VERSION}/bin" >> "$GITHUB_PATH"
 
       - name: Build the game (one HTML file)
         run: |
@@ -37,23 +71,29 @@ jobs:
           ls -la app/src/main/assets/www
 
       - name: Build the APK
-        run: gradle :app:assembleRelease --no-daemon --stacktrace
+        run: |
+          gradle --version
+          gradle :app:assembleRelease --no-daemon --stacktrace
 
       - name: Name the APK
         run: |
           mkdir -p out
           cp app/build/outputs/apk/release/app-release.apk "out/War-of-Power-v1.0.${{ github.run_number }}.apk"
+          ls -la out
 
       - name: Upload (Actions artifact)
         uses: actions/upload-artifact@v4
+        continue-on-error: true
         with:
           name: War-of-Power-APK
           path: out/*.apk
 
       - name: Publish a release with the APK
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v1.0.${{ github.run_number }}
-          name: War of Power v1.0.${{ github.run_number }}
-          body: "APK built automatically from the latest code — download the .apk file below and install it on your phone."
-          files: out/*.apk
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: v1.0.${{ github.run_number }}
+        run: |
+          gh release create "$TAG" out/*.apk --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+            --title "War of Power $TAG" \
+            --notes "APK built automatically from the latest code. Download the .apk file below and install it on your phone." \
+          || gh release upload "$TAG" out/*.apk --repo "$GITHUB_REPOSITORY" --clobber
