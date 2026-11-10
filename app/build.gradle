@@ -1,0 +1,54 @@
+plugins {
+    id 'com.android.application'
+}
+
+def runNo = (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger()
+
+android {
+    namespace 'com.thank7you.warofpower'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.thank7you.warofpower"
+        minSdk 21
+        targetSdk 34
+        versionCode runNo
+        versionName "1.0." + runNo
+    }
+
+    // a fixed key so every new APK installs over the previous one (see README: for Google Play use your own secret key)
+    signingConfigs {
+        release {
+            storeFile file("war-of-power.keystore")
+            storePassword "thank7you"
+            keyAlias "warofpower"
+            keyPassword "thank7you"
+            storeType "pkcs12"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            shrinkResources false
+            signingConfig signingConfigs.release
+        }
+        debug {
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}
+
+dependencies {
+    implementation 'androidx.webkit:webkit:1.11.0'
+}

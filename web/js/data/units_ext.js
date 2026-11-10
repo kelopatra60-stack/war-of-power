@@ -1,0 +1,171 @@
+/* ============================================================
+   War of Power — بيانات إضافية: أدوار جديدة، وحدات النخبة، شجرة التطوير لكل دولة
+   الملف: js/data/units_ext.js   ·   ترتيب التحميل: 3 من 43
+   ============================================================ */
+'use strict';
+/* ===== Extended data: new roles, elite units, faction tech trees ===== */
+Object.assign(DMG, {
+});
+Object.assign(WPN, {
+  manpads: { dmg: 170, t: 'aa', range: 440, rof: 4.8, proj: 'aamis', speed: 680, air: 1, ground: 0, fx: 'launch', snd: 'sam' },
+  mortar: { dmg: 85, t: 'he', range: 620, min: 120, rof: 4.4, proj: 'arty', speed: 300, splash: 30, acc: 38, fx: 'mortar', snd: 'mortar' },
+  mortar120: { dmg: 120, t: 'he', range: 700, min: 140, rof: 5.4, proj: 'arty', speed: 320, splash: 36, acc: 46, fx: 'mortar', snd: 'mortar' },
+  doorgun: { dmg: 11, t: 'mg', range: 220, rof: 0.7, burst: 5, bgap: 0.08, proj: 'hit', fx: 'mg', snd: 'mg', tracer: 0.5 },
+  ciws: { dmg: 14, t: 'aagun', range: 300, rof: 0.5, burst: 10, bgap: 0.035, proj: 'hit', fx: 'auto', snd: 'ciws', tracer: 1, air: 1 },
+  fpvk: { dmg: 280, t: 'heat', range: 30, rof: 99, proj: 'kami', splash: 14 },
+  tow: { dmg: 300, t: 'heat', range: 330, rof: 5.5, proj: 'missile', speed: 300, fx: 'launch', snd: 'atgm', splash: 14 },
+  cannon120X: { dmg: 380, t: 'ap', range: 320, rof: 3.2, proj: 'shell', speed: 2000, splash: 12, fx: 'cannon', snd: 'cannon', recoil: 5.5, shake: .2 },
+  cannon125E: { dmg: 360, t: 'ap', range: 305, rof: 3.4, proj: 'shell', speed: 1950, splash: 12, fx: 'cannon', snd: 'cannon', recoil: 6, shake: .22 },
+  ataka: { dmg: 330, t: 'heat', range: 360, rof: 4.5, salvo: 2, sgap: 0.5, proj: 'missile', speed: 380, fx: 'launch', snd: 'atgm', splash: 14 },
+  auto30x2: { dmg: 27, t: 'auto', range: 260, rof: 0.9, burst: 5, bgap: 0.09, proj: 'shell', speed: 1500, splash: 7, fx: 'auto', snd: 'auto', tracer: 1, air: 1 },
+  jet_aam6: { dmg: 380, t: 'aa', range: 560, rof: 0.8, proj: 'aamis', speed: 1000, air: 1, ground: 0, fx: 'sam', snd: 'sam', ammo: 6 },
+  jet_jdam: { dmg: 600, t: 'bomb', range: 70, rof: 0.5, proj: 'bomb', splash: 74, snd: 'bomb', ammo: 2 },
+  jet_msl6: { dmg: 340, t: 'heat', range: 420, rof: 0.6, proj: 'missile', speed: 760, fx: 'launch', snd: 'atgm', splash: 22, ammo: 6 },
+});
+
+/* ---------- New roles ---------- */
+Object.assign(ROLES, {
+  aainf: { cls: 'inf', armor: ARM.INF, hp: 110, speed: 25, r: 5, vision: 300, cost: 400, time: 7, pop: 1, build: 'barracks', cat: 'inf', w: ['manpads'] },
+  mortar: { cls: 'inf', armor: ARM.INF, hp: 100, speed: 22, r: 5, vision: 280, cost: 450, time: 8, pop: 1, build: 'barracks', cat: 'inf', w: ['mortar'], deployT: 0.8 },
+  medic: { cls: 'inf', armor: ARM.INF, hp: 100, speed: 28, r: 5, vision: 250, cost: 300, time: 6, pop: 1, build: 'barracks', cat: 'inf', w: [], healer: 16 },
+  heli2: { cls: 'air', fly: 'heli', armor: ARM.AIR, hp: 820, speed: 165, turn: 2.2, r: 18, alt: 70, vision: 340, cost: 1100, time: 12, pop: 2, build: 'airfield', cat: 'air', w: ['doorgun'], cargo: 8, carries: 'inf' },
+  fpv: { cls: 'air', fly: 'drone', armor: ARM.AIR, hp: 60, speed: 175, turn: 2.4, r: 8, alt: 60, vision: 300, cost: 250, time: 5, pop: 1, build: 'airfield', cat: 'air', w: ['fpvk'], kami: 1 },
+});
+const EXTRA_ROLES = [];
+COMBAT_ROLES.push('aainf', 'mortar', 'medic', 'heli2', 'fpv');
+
+/* ---------- Rosters for the new roles ---------- */
+const ROSTER_UE = {
+  usa: {
+    aainf: { n: 'رامي ستينغر', sub: 'FIM-92 Stinger', d: 'صاروخ أرض-جو محمول على الكتف يسقط المروحيات والمسيّرات.' },
+    mortar: { n: 'فريق هاون', sub: 'M224 عيار 60 ملم', d: 'مدفعية مشاة خفيفة تقصف من خلف الساتر.' },
+    medic: { n: 'مسعف قتالي', sub: 'الإسعاف الميداني', d: 'يعالج المشاة القريبين أثناء القتال.' },
+    heli2: { n: 'UH-60M بلاك هوك', sub: 'نقل 8 جنود + رشاش', d: 'مروحية نقل تحمل فرقة كاملة من المشاة وتنزلها خلف خطوط العدو.' },
+    fpv: null,
+  },
+  rus: {
+    aainf: { n: 'رامي فيربا', sub: '9K333 Verba', d: 'منظومة دفاع جوي محمولة حديثة.' },
+    mortar: { n: 'فريق هاون', sub: '2B14 بودنوس 82 ملم', d: 'هاون مشاة يدك المواقع من مسافة.', w: ['mortar120'] },
+    medic: { n: 'مسعف قتالي', sub: 'الإسعاف الميداني', d: 'يعالج المشاة القريبين أثناء القتال.' },
+    heli2: { n: 'Mi-8AMTSh تيرمينيتور', sub: 'نقل 8 جنود + رشاش', d: 'مروحية نقل مسلحة متينة.', hp: 900 },
+    fpv: null,
+  },
+  chn: {
+    aainf: { n: 'رامي QW-2', sub: 'صاروخ محمول', d: 'منظومة دفاع جوي محمولة صينية.' },
+    mortar: { n: 'فريق هاون', sub: 'PP87 عيار 82 ملم', d: 'هاون مشاة خفيف سريع الإطلاق.' },
+    medic: { n: 'مسعف قتالي', sub: 'الإسعاف الميداني', d: 'يعالج المشاة القريبين أثناء القتال.' },
+    heli2: { n: 'Z-20', sub: 'نقل 8 جنود + رشاش', d: 'مروحية النقل الصينية الحديثة.' },
+    fpv: null,
+  },
+  eu: {
+    aainf: { n: 'رامي ميسترال', sub: 'Mistral 3', d: 'صاروخ دفاع جوي قصير المدى فرنسي الصنع.' },
+    mortar: { n: 'فريق هاون', sub: 'L16 عيار 81 ملم', d: 'هاون مشاة دقيق.' },
+    medic: { n: 'مسعف قتالي', sub: 'الإسعاف الميداني', d: 'يعالج المشاة القريبين أثناء القتال.' },
+    heli2: { n: 'NH90', sub: 'نقل 8 جنود + رشاش', d: 'مروحية النقل الأوروبية المشتركة.' },
+    fpv: null,
+  },
+  arb: {
+    aainf: { n: 'رامي إيغلا-S', sub: 'صاروخ محمول', d: 'منظومة دفاع جوي محمولة.' },
+    mortar: { n: 'فريق هاون', sub: 'هاون 81 ملم', d: 'هاون مشاة يدك المواقع من مسافة.' },
+    medic: { n: 'مسعف قتالي', sub: 'الإسعاف الميداني', d: 'يعالج المشاة القريبين أثناء القتال.' },
+    heli2: { n: 'UH-60M بلاك هوك', sub: 'نقل 8 جنود + رشاش', d: 'مروحية نقل تحمل فرقة كاملة من المشاة.' },
+    fpv: null,
+  },
+};
+for (const f in ROSTER_UE) Object.assign(ROSTER[f], ROSTER_UE[f]);
+// faction-specific building names for the new structures
+
+/* ---------- Elite units (free for every player, called in from the battle menu) ---------- */
+const ELITES = {
+  usa: [
+    { role: 'el1', base: 'mbt', art: 'usa_el1', n: 'أبرامز X', sub: 'الجيل التالي — مدفع XM360', d: 'نموذج الدبابة الأمريكية القادمة: برج غير مأهول ومحرك هجين ونظام حماية نشط.', price: 9000, ex: { hp: 1850, w: ['cannon120X', 'coax', 'hmg'], aps: 0.5, speed: 66, cost: 0 } },
+    { role: 'el2', base: 'jet', art: 'usa_el2', n: 'F-22 رابتور', sub: 'مقاتلة تفوق جوي شبحية', d: 'أخطر مقاتلة في العالم: شبحية بالكامل وتطير بسرعة فوق صوتية دون حارق لاحق.', price: 12000, ex: { hp: 900, w: ['jet_jdam', 'jet_aam6'], speed: 520, stealth: 1, cost: 0 } },
+  ],
+  rus: [
+    { role: 'el1', base: 'mbt', art: 'rus_el1', n: 'BMPT تيرميناتور', sub: 'مدفعان 30 ملم + صواريخ أتاكا', d: 'عربة دعم الدبابات: تمزق المشاة والآليات الخفيفة وتصطاد الدبابات بالصواريخ.', price: 9000, ex: { hp: 1700, w: ['auto30x2', 'ataka'], speed: 62, cost: 0 } },
+    { role: 'el2', base: 'jet', art: 'rus_el2', n: 'Su-35S', sub: 'مقاتلة فائقة المناورة', d: 'مقاتلة ثقيلة بمحركات موجهة الدفع وحمولة صواريخ ضخمة.', price: 11000, ex: { hp: 950, w: ['jet_msl6', 'jet_aam6'], speed: 480, cost: 0 } },
+  ],
+  chn: [
+    { role: 'el1', base: 'mbt', art: 'chn_el1', n: 'VT-4', sub: 'مدفع 125 ملم + حماية نشطة', d: 'دبابة صينية حديثة سريعة بإدارة نيران متطورة.', price: 8500, ex: { hp: 1650, w: ['cannon125E', 'coax'], aps: 0.35, speed: 68, cost: 0 } },
+    { role: 'el2', base: 'jet', art: 'chn_el2', n: 'J-35A', sub: 'مقاتلة شبحية متوسطة', d: 'المقاتلة الشبحية الصينية الجديدة ذات المحركين.', price: 11000, ex: { hp: 860, w: ['jet_jdam', 'jet_aam6'], speed: 500, stealth: 1, cost: 0 } },
+  ],
+  eu: [
+    { role: 'el1', base: 'mbt', art: 'eu_el1', n: 'ليوبارد 2A8', sub: 'مدفع L55A1 + نظام تروفي', d: 'أحدث نسخة من ليوبارد: مدفع أطول ودروع معززة ونظام حماية نشط.', price: 9000, ex: { hp: 1800, w: ['cannon120X', 'coax'], aps: 0.45, speed: 62, cost: 0 } },
+    { role: 'el2', base: 'jet', art: 'eu_el2', n: 'رافال F4', sub: 'مقاتلة متعددة المهام', d: 'مقاتلة فرنسية بمنظومة حرب إلكترونية تضلل الصواريخ المعادية.', price: 10500, ex: { hp: 860, w: ['jet_msl6', 'jet_aam6'], speed: 480, ecm: 0.35, cost: 0 } },
+  ],
+  arb: [
+    { role: 'el1', base: 'mbt', art: 'arb_el1', n: 'M1A2S أبرامز', sub: 'مدفع 120 ملم + دروع إضافية', d: 'نسخة أبرامز السعودية المطورة بدروع تفاعلية.', price: 8500, ex: { hp: 1800, w: ['cannon120A', 'coax', 'hmg'], speed: 62, cost: 0 } },
+    { role: 'el2', base: 'jet', art: 'arb_el2', n: 'رافال EM', sub: 'مقاتلة متعددة المهام', d: 'رافال القوات الجوية العربية بصواريخ سكالب ومنظومة سبيكترا.', price: 10500, ex: { hp: 860, w: ['jet_msl6', 'jet_aam6'], speed: 480, ecm: 0.35, cost: 0 } },
+  ],
+};
+
+/* ---------- Technology trees: 3 branches x 4 tiers, 3 unique nodes per nation ---------- */
+// five sections: 0 tanks · 1 infantry · 2 air defence · 3 aircraft · 4 buildings (each one a small tree: `after` = parent nodes)
+const TECH_COMMON = [
+  { id: 'engine', sec: 0, tier: 1, n: 'محركات محسّنة', d: '+10% سرعة للمركبات.', cost: 1500, time: 35, req: 'factory', fx: { vehSpd: 1.1 } },
+  { id: 'armor', sec: 0, tier: 2, n: 'دروع مركّبة متطورة', d: '+20% تحمّل لكل المركبات.', cost: 2000, time: 40, req: 'factory', after: ['engine'], fx: { vehHp: 1.2 } },
+  { id: 'ammo', sec: 0, tier: 2, n: 'ذخيرة اختراق محسّنة', d: '+15% ضرر لمدافع الدبابات والمدرعات.', cost: 2000, time: 40, req: 'factory', after: ['engine'], fx: { dmgAP: 1.15 } },
+  { id: 'guided', sec: 0, tier: 3, n: 'توجيه صاروخي محسّن', d: '+15% مدى للصواريخ الموجهة المضادة للدروع.', cost: 1800, time: 40, req: 'ops', after: ['armor', 'ammo'], fx: { msRange: 1.15 } },
+  { id: 'vest', sec: 1, tier: 1, n: 'دروع واقية للمشاة', d: '+25% تحمّل للمشاة.', cost: 1000, time: 30, req: 'barracks', fx: { infHp: 1.25 } },
+  { id: 'boots', sec: 1, tier: 1, n: 'لياقة قتالية', d: '+8% سرعة للقوات البرية.', cost: 900, time: 25, req: 'barracks', fx: { gndSpd: 1.08 } },
+  { id: 'train', sec: 1, tier: 2, n: 'تدريب النخبة', d: 'المشاة الجدد يتخرجون برتبة مخضرم.', cost: 1500, time: 35, req: 'barracks', after: ['vest', 'boots'], fx: { train: 1 } },
+  { id: 'nightv', sec: 1, tier: 3, n: 'مناظير ليلية حرارية', d: '+15% مدى رؤية لكل الوحدات.', cost: 1400, time: 30, req: 'ops', after: ['train'], fx: { vision: 1.15 } },
+  { id: 'aatrack', sec: 2, tier: 1, n: 'رادارات تتبع', d: '+15% مدى للدفاعات الجوية.', cost: 1200, time: 30, req: 'factory', fx: { aaRange: 1.15 } },
+  { id: 'aafrag', sec: 2, tier: 2, n: 'رؤوس تشظٍّ', d: '+20% ضرر للدفاعات الجوية.', cost: 1600, time: 35, req: 'factory', after: ['aatrack'], fx: { aaDmg: 1.2 } },
+  { id: 'skyshield', sec: 2, tier: 3, n: 'الدرع الجوي', d: '+10% مدى و+15% ضرر إضافي للدفاعات الجوية.', cost: 2200, time: 45, req: 'ops', after: ['aafrag'], fx: { aaRange: 1.1, aaDmg: 1.15 } },
+  { id: 'airframe', sec: 3, tier: 1, n: 'هياكل مقوّاة', d: '+20% تحمّل للطائرات والمروحيات.', cost: 1400, time: 30, req: 'airfield', fx: { airHp: 1.2 } },
+  { id: 'airbomb', sec: 3, tier: 2, n: 'ذخائر جوية ذكية', d: '+15% ضرر للطيران.', cost: 1800, time: 40, req: 'airfield', after: ['airframe'], fx: { airDmg: 1.15 } },
+  { id: 'jetfuel', sec: 3, tier: 2, n: 'وقود عالي الأداء', d: '+12% سرعة للطيران.', cost: 1500, time: 35, req: 'airfield', after: ['airframe'], fx: { airSpd: 1.12 } },
+  { id: 'jetarm', sec: 3, tier: 3, n: 'تدريع المقاتلات', d: '+20% تحمّل للمقاتلات النفاثة.', cost: 2000, time: 40, req: 'airfield', after: ['airbomb', 'jetfuel'], fx: { jetHp: 1.2 } },
+  { id: 'logistics', sec: 4, tier: 1, n: 'لوجستيات محسّنة', d: '+10% دخل من كل المصادر.', cost: 1500, time: 35, req: 'supply', fx: { income: 1.1 } },
+  { id: 'grid', sec: 4, tier: 1, n: 'شبكة كهرباء ذكية', d: '+30% إنتاج الكهرباء.', cost: 1200, time: 30, req: 'power', fx: { power: 1.3 } },
+  { id: 'fort', sec: 4, tier: 2, n: 'تحصينات خرسانية', d: '+25% تحمّل للمباني و+15% ضرر للدفاعات.', cost: 1800, time: 40, req: 'ops', after: ['logistics', 'grid'], fx: { bldHp: 1.25, defDmg: 1.15 } },
+  { id: 'radar', sec: 4, tier: 3, n: 'رادارات متقدمة', d: '+20% مدى رؤية لكل الوحدات.', cost: 1200, time: 30, req: 'ops', after: ['fort'], fx: { vision: 1.2 } },
+];
+const TECH_UNIQUE = {
+  usa: [
+    { id: 'u_net', br: 0, tier: 4, n: 'الحرب الشبكية', d: 'ربط كل الوحدات بشبكة واحدة: +12% مدى لكل القوات البرية.', cost: 3500, time: 55, req: 'ops', after: ['armor', 'train'], fx: { range: 1.12 } },
+    { id: 'u_f135', br: 1, tier: 4, n: 'محركات الجيل الخامس', d: '+20% ضرر و+15% سرعة للطيران.', cost: 3500, time: 55, req: 'airfield', after: ['skyshield'], fx: { airDmg: 1.2, airSpd: 1.15 } },
+    { id: 'u_glob', br: 2, tier: 3, n: 'اللوجستيات العالمية', d: 'إنتاج الوحدات أسرع بنسبة 15%.', cost: 3000, time: 50, req: 'ops', after: ['fort', 'grid'], fx: { unitTime: 0.85 } },
+  ],
+  rus: [
+    { id: 'u_relikt', br: 0, tier: 4, n: 'دروع ريليكت التفاعلية', d: '+15% تحمّل إضافي لكل المركبات.', cost: 3500, time: 55, req: 'ops', after: ['armor', 'train'], fx: { vehHp: 1.15 } },
+    { id: 'u_ew', br: 1, tier: 4, n: 'الحرب الإلكترونية كراسوخا', d: 'تشويش يجعل 30% من صواريخ العدو تخطئ وحداتك.', cost: 3500, time: 55, req: 'ops', after: ['skyshield'], fx: { ewar: 0.3 } },
+    { id: 'u_heavy', br: 2, tier: 3, n: 'المدفعية الثقيلة', d: '+25% ضرر و+10% مدى للمدفعية والراجمات.', cost: 3000, time: 50, req: 'factory', after: ['fort', 'grid'], fx: { artyDmg: 1.25, artyRange: 1.1 } },
+  ],
+  chn: [
+    { id: 'u_horde', br: 0, tier: 4, n: 'الحشد البشري', d: 'مكافأة التجمّع تتضاعف: +30% ضرر للوحدات المتجمعة.', cost: 3200, time: 55, req: 'barracks', after: ['armor', 'train'], fx: { hordeK: 2 } },
+    { id: 'u_hyper', br: 1, tier: 4, n: 'صواريخ فرط صوتية', d: 'السلاح الاستراتيجي يشحن أسرع بنسبة 40%.', cost: 3500, time: 55, req: 'ops', after: ['skyshield'], fx: { superK: 1.4 } },
+    { id: 'u_mass', br: 2, tier: 3, n: 'الإنتاج الضخم', d: 'كل الوحدات أرخص بنسبة 12%.', cost: 3000, time: 50, req: 'factory', after: ['fort', 'grid'], fx: { cost: 0.88 } },
+  ],
+  eu: [
+    { id: 'u_prec', br: 0, tier: 4, n: 'الدقة الألمانية', d: '+15% ضرر لمدافع الدبابات ودقة أعلى.', cost: 3500, time: 55, req: 'ops', after: ['armor', 'train'], fx: { dmgAP: 1.15, acc: 0.6 } },
+    { id: 'u_iads', br: 1, tier: 4, n: 'الدفاع الجوي المتكامل', d: '+30% ضرر و+15% مدى للدفاعات الجوية.', cost: 3500, time: 55, req: 'ops', after: ['skyshield'], fx: { aaDmg: 1.3, aaRange: 1.15 } },
+    { id: 'u_green', br: 2, tier: 3, n: 'الطاقة المتجددة', d: '+50% إنتاج الكهرباء و+10% تحمّل للمباني.', cost: 2800, time: 50, req: 'power', after: ['fort', 'grid'], fx: { power: 1.5, bldHp: 1.1 } },
+  ],
+  arb: [
+    { id: 'u_desert', br: 0, tier: 4, n: 'رمال الصحراء', d: '+12% سرعة لكل القوات البرية.', cost: 3200, time: 55, req: 'factory', after: ['armor', 'train'], fx: { gndSpd: 1.12 } },
+    { id: 'u_falcon', br: 1, tier: 4, n: 'الصقور', d: '+25% تحمّل للمقاتلات وذخيرة إضافية.', cost: 3500, time: 55, req: 'airfield', after: ['skyshield'], fx: { jetHp: 1.25, jetAmmo: 1 } },
+    { id: 'u_oil', br: 2, tier: 3, n: 'اقتصاد الحرب', d: '+20% دخل عام من الإمدادات.', cost: 3000, time: 50, req: 'supply', after: ['fort', 'grid'], fx: { income: 1.2 } },
+  ],
+};
+const TECH_SEC = ['الدبابات', 'المشاة', 'الدفاع الجوي', 'الطائرات', 'المباني'];
+// nation-specific upgrades join the section their effect belongs to, one tier below its last common node
+{ const secOf = fx => { const k = Object.keys(fx).join(' '); return /aa|ewar/.test(k) ? 2 : /air|jet/.test(k) ? 3 : /inf|train|horde|gndSpd/.test(k) ? 1 : /veh|dmgAP|range|msRange|arty|acc/i.test(k) ? 0 : 4; };
+  for (const f in TECH_UNIQUE) for (const t of TECH_UNIQUE[f]) { t.sec = secOf(t.fx || {}); const last = TECH_COMMON.filter(c => c.sec === t.sec).sort((a, b) => b.tier - a.tier)[0]; t.tier = last.tier + 1; t.after = TECH_COMMON.filter(c => c.sec === t.sec && c.tier === last.tier).map(c => c.id); delete t.br; } }
+const techTree = f => TECH_COMMON.concat(TECH_UNIQUE[f] || []);
+const techById = (f, id) => techTree(f).find(t => t.id === id);
+// keep the legacy upgrade list in sync (AI + older code paths iterate it)
+UPGRADES.length = 0; for (const t of TECH_COMMON) UPGRADES.push(t);
+
+// elites inherit their base role and get a premium profile
+function buildElites() { for (const f in ELITES) for (const e of ELITES[f]) {
+  const base = UNITS[f + '_' + e.base] || UNITS['usa_' + e.base]; if (!base) continue;
+  const u = Object.assign({}, base, e.ex); u.id = f + '_' + e.role; u.role = e.role; u.baseRole = e.base; u.f = f; u.n = e.n; u.sub = e.sub; u.d = e.d; u.elite = 1; u.build = 'special'; u.req = []; u.time = 0; u.art = e.art;
+  u.w = (e.ex.w || base.w).slice(); u.price = e.price; u.pop = base.pop; UNITS[u.id] = u;
+} }
+buildUnits(); buildElites();
+const eliteList = f => (ELITES[f] || []).map(e => UNITS[f + '_' + e.role]).filter(Boolean);
+// neutral modifier set (multipliers) plus additive keys
+const PM0 = { infHp: 1, vehHp: 1, airHp: 1, jetHp: 1, bldHp: 1, dmgAP: 1, artyDmg: 1, defDmg: 1, airDmg: 1, aaDmg: 1, msRange: 1, range: 1, aaRange: 1, artyRange: 1, vision: 1, vehSpd: 1, gndSpd: 1, airSpd: 1, income: 1, oil: 1, power: 1, cost: 1, unitTime: 1, superK: 1, hordeK: 1, acc: 1, ewar: 0, jetAmmo: 0, train: 0 };
+const PM_ADD = { ewar: 1, jetAmmo: 1, train: 1 };

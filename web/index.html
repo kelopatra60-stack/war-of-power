@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#3a3f29">
+<meta name="mobile-web-app-capable" content="yes">
+<title>War of Power</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;600;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/menus.css">
+<link rel="stylesheet" href="css/hud.css">
+</head>
+<body>
+<!-- company splash (1 second): Thank7you -->
+<div id="splash" translate="no" aria-hidden="true"><div class="spbg"></div><div class="spin">
+<svg class="spemb" viewBox="0 0 120 120"><defs><linearGradient id="spG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff4c4"/><stop offset=".45" stop-color="#e2b24a"/><stop offset="1" stop-color="#8a5a12"/></linearGradient></defs><path d="M60 6l44 16v34c0 28-19 48-44 58C35 104 16 84 16 56V22z" fill="none" stroke="url(#spG)" stroke-width="5"/><path d="M60 18l34 12v26c0 22-14 37-34 46-20-9-34-24-34-46V30z" fill="rgba(226,178,74,.12)"/><path d="M36 50l24-14 24 14M36 66l24-14 24 14" fill="none" stroke="url(#spG)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M60 74l4.7 9.6 10.6 1.5-7.7 7.5 1.8 10.5L60 98.1l-9.4 5 1.8-10.5-7.7-7.5 10.6-1.5z" fill="url(#spG)"/></svg>
+<div class="spname"><span>THANK</span><b>7</b><span>YOU</span><i class="spsweep"></i></div><div class="sprule"></div><div class="sptag">PRESENTS</div></div></div>
+<script>setTimeout(function(){var s=document.getElementById('splash');if(s)s.parentNode.removeChild(s);},1100);</script>
+<!-- shared gradients for the gold menu icons, coins and medals (referenced as url(#…) from js/ui/menus.js and js/ui/economy.js) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+<radialGradient id="gGold" cx="38%" cy="30%" r="80%"><stop offset="0" stop-color="#fbf3d6"/><stop offset=".38" stop-color="#d6b86a"/><stop offset=".78" stop-color="#8d6a26"/><stop offset="1" stop-color="#5a4214"/></radialGradient>
+<linearGradient id="gGoldE" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff4c8"/><stop offset="1" stop-color="#5e4616"/></linearGradient>
+<filter id="gSh" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="1.6" stdDeviation="1.4" flood-color="#1a1608" flood-opacity=".55"/></filter>
+<radialGradient id="gCoin" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="#fff7c8"/><stop offset=".42" stop-color="#ffd23f"/><stop offset=".85" stop-color="#d88d0c"/><stop offset="1" stop-color="#a35f00"/></radialGradient>
+<linearGradient id="gCoinE" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffe680"/><stop offset="1" stop-color="#8a4a00"/></linearGradient>
+<radialGradient id="gMed" cx="35%" cy="30%" r="78%"><stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#c9d6ee"/><stop offset=".85" stop-color="#7f97c4"/><stop offset="1" stop-color="#4c6596"/></radialGradient>
+<linearGradient id="gGem" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#b8ffe0"/><stop offset=".4" stop-color="#2fd38a"/><stop offset=".8" stop-color="#0f8a55"/><stop offset="1" stop-color="#075c38"/></linearGradient>
+<linearGradient id="gShard" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f6e2ff"/><stop offset=".35" stop-color="#c879ff"/><stop offset=".75" stop-color="#7d2fd0"/><stop offset="1" stop-color="#3f137a"/></linearGradient>
+<radialGradient id="gWseg" cx="0" cy="0" r="100" gradientUnits="userSpaceOnUse"><stop offset=".2" stop-color="#000" stop-opacity=".25"/><stop offset=".6" stop-color="#fff" stop-opacity=".08"/><stop offset=".97" stop-color="#fff" stop-opacity=".22"/><stop offset="1" stop-color="#000" stop-opacity=".3"/></radialGradient>
+</defs></svg>
+<canvas id="gl"></canvas><canvas id="ov"></canvas>
+<div id="hud" class="hid">
+  <div id="topbar"><div class="res"><span class="cap"><span id="money">$0</span></span><span class="cap rs" title="الحديد"><svg viewBox="0 0 24 24" class="ri"><path d="M7.2 6.5h9.6l2.4 4.2H4.8z"/><path d="M4.8 10.7h14.4l2.3 6.8H2.5z"/><path d="M9 8.6h6"/></svg><span id="iron">0</span></span><span class="cap rs" title="القطع"><svg viewBox="0 0 24 24" class="rp"><path d="M3.5 7.8L12 3.6l8.5 4.2v8.6L12 20.6l-8.5-4.2z"/><path d="M3.5 7.8L12 12l8.5-4.2M12 12v8.6"/><path d="M7.8 5.7l8.5 4.2v3.4"/></svg><span id="parts">0</span></span><span class="cap" title="الكهرباء"><svg viewBox="0 0 24 24"><path d="M13 2L5 13h6l-1 9 8-11h-6z"/></svg><div id="powerbar"><i id="pfill"></i></div><span id="ptext"></span></span><span class="cap" title="الوحدات"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3.2"/><path d="M5 21c0-4.2 3.2-7 7-7s7 2.8 7 7"/></svg><span id="pop"></span></span><span id="rank"></span><span id="gtime"></span><span id="lbtns"><button id="bTech" aria-label="شجرة التطوير"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="2.2"/><circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="18" r="2.2"/><path d="M12 7.2v4.3M12 11.5L6.8 16M12 11.5l5.2 4.5"/></svg><span>التطوير</span></button><button id="bOps" aria-label="غرفة العمليات"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4"/><path d="M12 1.5v5M12 17.5v5M1.5 12h5M17.5 12h5"/></svg><span>العمليات</span></button><button id="bBat" aria-label="الكتائب والوحدات"><svg viewBox="0 0 24 24" class="plus"><path d="M12 4.5v15M4.5 12h15"/></svg><span>الكتائب</span></button></span><span id="armyb"><button id="bAtk" aria-label="هجوم الكل" title="هجوم الكل"><svg viewBox="0 0 24 24"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6M16 16l4 4M19 21l2-2"/><path d="M14.5 6.5L18 3h3v3l-3.5 3.5"/><path d="M5 14l4 4M7 17l-3 3M3 19l2 2"/></svg></button><button id="bDef" aria-label="دفاع الكل" title="دفاع الكل"><svg viewBox="0 0 24 24"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/></svg></button><button id="bAll" aria-label="كل الوحدات" title="كل الوحدات"><svg viewBox="0 0 24 24"><circle cx="8" cy="8" r="3"/><circle cx="16.5" cy="9" r="2.5"/><path d="M2.5 20c0-3.6 2.5-6 5.5-6s5.5 2.4 5.5 6M14 14.5c3.5-.6 7 1.4 7 5.5"/></svg></button></span><span id="netst" class="hid"><i></i><span></span></span></div><div class="tbtns"><button id="bChat" class="hid" aria-label="الدردشة"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></svg></button><button id="bMute" aria-label="كتم الإشعارات المنبثقة"><svg viewBox="0 0 24 24" class="on"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><svg viewBox="0 0 24 24" class="off"><path d="M6 16V11a6 6 0 0 1 9.5-4.9M18 11v5l2 2H8"/><path d="M10 20a2 2 0 0 0 4 0M3 3l18 18"/></svg></button><button id="bSpeed" aria-label="السرعة">×1</button><button id="bFreeze" aria-label="إيقاف اللعبة مؤقتاً"><svg viewBox="0 0 24 24" class="pz"><rect x="6.5" y="5" width="3.6" height="14" rx="1"/><rect x="13.9" y="5" width="3.6" height="14" rx="1"/></svg><svg viewBox="0 0 24 24" class="pl"><path d="M7.5 4.8l11 7.2-11 7.2z"/></svg></button><button id="bQS" aria-label="الإعدادات السريعة"><svg viewBox="0 0 24 24" class="gr"><path d="M10.49 4.76L10.82 2.47L13.18 2.47L13.51 4.76L16.05 5.81L17.90 4.43L19.57 6.10L18.19 7.95L19.24 10.49L21.53 10.82L21.53 13.18L19.24 13.51L18.19 16.05L19.57 17.90L17.90 19.57L16.05 18.19L13.51 19.24L13.18 21.53L10.82 21.53L10.49 19.24L7.95 18.19L6.10 19.57L4.43 17.90L5.81 16.05L4.76 13.51L2.47 13.18L2.47 10.82L4.76 10.49L5.81 7.95L4.43 6.10L6.10 4.43L7.95 5.81Z"/><circle cx="12" cy="12" r="3.3"/></svg></button><button id="bPause" aria-label="القائمة"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button></div></div>
+  <div id="wavebar" class="hid"></div>
+  <div id="alerts"></div><div id="chatlog"></div><div id="chatbar" class="hid"><input id="chatin2" maxlength="120" placeholder="اكتب رسالة لكل اللاعبين…" autocomplete="off"><button id="chatgo">إرسال</button></div>
+  <div id="mini"><canvas id="mm"></canvas><button id="bMM" class="mmtog" aria-label="حجم الخريطة المصغرة"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 15v5h-5M15 4h5v5M9 20H4v-5"/></svg></button><button id="bHome" class="mmhome" aria-label="القاعدة"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7"/><path d="M6 9.5V20h12V9.5"/><path d="M10 20v-5h4v5"/></svg></button></div>
+  
+  <div id="ctx" class="closed"><div id="ctxh"><img id="ctxi" alt=""><div class="ctt"><b id="ctxn"></b><span id="ctxs"></span></div><button id="ctxx" aria-label="إغلاق">✕</button></div><div id="ctxa"></div><div id="tabs"></div><div id="qstrip"></div><div id="grid"></div></div>
+  <div id="gembar" class="hid"><button id="gemAct"></button></div>
+  <div id="frzbar" class="hid"><b>⏸ اللعبة متوقفة</b><button class="btn pri sm" id="frzGo">▶ متابعة</button></div>
+  <div id="placebar" class="hid"><b></b><button class="btn pri" id="pOk">✓ تأكيد</button><button class="btn" id="pNo">✕</button></div>
+  <div id="targetbar" class="hid"><b></b><button class="btn" id="tNo">إلغاء</button></div>
+  <div id="tip" class="hid"></div>
+  <div id="tut" class="hid"><div class="tt"></div><div class="tf"><span class="tn"></span><button class="btn ghost sm" data-skip>تخطي التدريب</button></div></div>
+</div>
+<div id="screens" class="scr hid"></div>
+<div id="loading" class="hid"><div class="ldbg"></div><div class="ldfx"></div><div class="ldtop"><div class="ldmode"><b id="lmode"></b><span id="lmap"></span></div></div><div class="ldvs" id="lvs"></div><div class="ldradar" aria-hidden="true"><i></i><b></b><s></s><u></u></div><div class="ldbot"><div class="ldrow"><span id="ltip"></span><b id="lpct">0%</b></div><div class="lb"><i id="lbar"></i></div></div></div>
+<div id="achbox"></div>
+<div id="rot"><svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg><b>أدر هاتفك أفقيًا</b><span>اللعبة مصممة للوضع العرضي</span></div>
+<!-- ترتيب تحميل ملفات اللعبة مهم: لا تغيّره إلا إذا عرفت ما تفعل (راجع فهرس.md) -->
+<script src="js/core/util.js"></script>
+<script src="js/ui/i18n_en.js"></script>
+<script src="js/ui/i18n.js"></script>
+<script src="js/data/units.js"></script>
+<script src="js/data/units_ext.js"></script>
+<script src="js/data/structures_new.js"></script>
+<script src="js/data/units_fx.js"></script>
+<script src="js/render/gl.js"></script>
+<script src="js/render/painter.js"></script>
+<script src="js/render/terrain_tex.js"></script>
+<script src="js/art/units.js"></script>
+<script src="js/art/aircraft.js"></script>
+<script src="js/art/units_ext.js"></script>
+<script src="js/art/units_fx.js"></script>
+<script src="js/art/artillery_ad.js"></script>
+<script src="js/art/buildings.js"></script>
+<script src="js/art/buildings_v2.js"></script>
+<script src="js/art/structures_new.js"></script>
+<script src="js/art/fx_sprites.js"></script>
+<script src="js/art/fx_sprites2.js"></script>
+<script src="js/map/map.js"></script>
+<script src="js/map/connectivity.js"></script>
+<script src="js/map/path.js"></script>
+<script src="js/game/game.js"></script>
+<script src="js/game/commands.js"></script>
+<script src="js/game/units.js"></script>
+<script src="js/game/combat.js"></script>
+<script src="js/game/buildings.js"></script><script src="js/game/levels.js"></script>
+<script src="js/game/ai.js"></script>
+<script src="js/fx/effects.js"></script>
+<script src="js/audio/synth.js"></script>
+<script src="assets/sounds.js"></script>
+<script src="assets/music.js"></script>
+<script src="js/audio/sound.js"></script>
+<script src="js/ui/draw.js"></script>
+<script src="js/ui/input.js"></script>
+<script src="assets/flags.js"></script>
+<script src="js/ui/profile.js"></script>
+<script src="js/ui/economy.js"></script>
+<script src="js/ui/icons.js"></script>
+<script src="js/ui/hud.js"></script>
+<script src="js/ui/menus.js"></script>
+<script src="js/ui/shop.js"></script>
+<script src="js/ui/rewards.js"></script>
+<script src="js/ui/guide.js"></script>
+<script src="js/ui/loading.js"></script>
+<script src="js/modes/skirmish.js"></script>
+<script src="js/modes/tutorial.js"></script>
+<script src="js/modes/survival.js"></script>
+<script src="js/net/net.js"></script>
+<script src="js/net/rtc.js"></script><script src="js/net/lobby.js"></script><script src="js/ui/friends.js"></script>
+<script src="js/main.js"></script>
+
+</body>
+</html>

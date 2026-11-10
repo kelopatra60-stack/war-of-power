@@ -1,0 +1,340 @@
+/* ============================================================
+   War of Power — بيانات اللعبة الأساسية: الدول، الوحدات، الأسلحة، المباني
+   الملف: js/data/units.js   ·   ترتيب التحميل: 2 من 43
+   ============================================================ */
+'use strict';
+/* ===== Game data: factions, units, weapons, buildings ===== */
+const TILE = 32;
+
+const ARM = { INF: 0, LIGHT: 1, MED: 2, HEAVY: 3, AIR: 4, BLD: 5, DEF: 6 };
+
+// damage type -> multipliers vs [inf, light, med, heavy, air, bld, def]
+const DMG = {
+  rifle: [1.0, 0.25, 0.1, 0.05, 0.15, 0.08, 0.1],
+  mg: [1.15, 0.55, 0.22, 0.08, 0.4, 0.12, 0.15],
+  auto: [0.9, 1.0, 0.65, 0.25, 0.6, 0.35, 0.45],
+  ap: [0.35, 1.0, 1.0, 1.0, 0, 0.55, 0.8],
+  heat: [0.35, 1.1, 1.05, 0.95, 0, 0.7, 0.8],
+  he: [1.15, 0.8, 0.55, 0.35, 0, 1.0, 0.9],
+  thermo: [1.6, 1.0, 0.55, 0.3, 0, 1.35, 1.2],
+  sniper: [3.2, 0.1, 0.05, 0.02, 0.05, 0.02, 0.05],
+  aa: [0, 0.15, 0.08, 0.04, 1.0, 0, 0],
+  aagun: [0.7, 0.6, 0.3, 0.1, 1.0, 0.2, 0.2],
+  bomb: [1.2, 1.0, 0.9, 0.8, 0, 1.3, 1.1],
+  rocket: [1.05, 0.9, 0.7, 0.5, 0, 1.0, 0.9],
+};
+
+/* Weapon archetypes. range/speed in world units, rof seconds between bursts */
+const WPN = {
+  rifle: { dmg: 9, t: 'rifle', range: 170, rof: 0.95, burst: 3, bgap: 0.1, proj: 'hit', fx: 'rifle', snd: 'rifle', tracer: 0.3, air: 1 },
+  rifle2: { dmg: 10, t: 'rifle', range: 175, rof: 0.9, burst: 3, bgap: 0.1, proj: 'hit', fx: 'rifle', snd: 'rifle', tracer: 0.3, air: 1 },
+  spec: { dmg: 17, t: 'rifle', range: 210, rof: 0.6, burst: 3, bgap: 0.08, proj: 'hit', fx: 'rifle', snd: 'rifle', tracer: 0.3, air: 1 },
+  c4: { dmg: 1600, t: 'bomb', range: 30, rof: 20, proj: 'c4', splash: 40 },
+  sniper: { dmg: 120, t: 'sniper', range: 340, rof: 2.6, proj: 'hit', fx: 'sniper', snd: 'sniper', tracer: 1 },
+  rpg: { dmg: 150, t: 'heat', range: 210, rof: 3.2, proj: 'rocket', speed: 430, fx: 'rpg', snd: 'rpg', splash: 12, acc: 0.035 },
+  javelin: { dmg: 215, t: 'heat', range: 255, rof: 4.2, proj: 'missile', speed: 290, top: 1, fx: 'launch', snd: 'atgm', splash: 14 },
+  hmg: { dmg: 13, t: 'mg', range: 225, rof: 0.75, burst: 5, bgap: 0.085, proj: 'hit', fx: 'mg', snd: 'hmg', tracer: 0.5, air: 1 },
+  coax: { dmg: 8, t: 'mg', range: 200, rof: 0.7, burst: 4, bgap: 0.08, proj: 'hit', fx: 'mg', snd: 'mg', tracer: 0.4, coax: 1 },
+  gmg: { dmg: 24, t: 'he', range: 230, rof: 1.2, burst: 3, bgap: 0.22, proj: 'shell', speed: 420, arc: 0.25, splash: 16, fx: 'mg', snd: 'gmg' },
+  auto25: { dmg: 22, t: 'auto', range: 245, rof: 1.0, burst: 3, bgap: 0.17, proj: 'shell', speed: 1500, splash: 6, fx: 'auto', snd: 'auto', tracer: 1, air: 1 },
+  auto30: { dmg: 25, t: 'auto', range: 250, rof: 1.05, burst: 3, bgap: 0.15, proj: 'shell', speed: 1500, splash: 7, fx: 'auto', snd: 'auto', tracer: 1, air: 1 },
+  gun100: { dmg: 120, t: 'he', range: 235, rof: 3.4, proj: 'shell', speed: 950, splash: 26, fx: 'cannon', snd: 'cannonM', recoil: 3 },
+  atgm: { dmg: 270, t: 'heat', range: 310, rof: 6.5, proj: 'missile', speed: 270, fx: 'launch', snd: 'atgm', splash: 14 },
+  cannon105: { dmg: 230, t: 'ap', range: 265, rof: 3.4, proj: 'shell', speed: 1700, splash: 9, fx: 'cannonB', snd: 'cannon', recoil: 4, shake: .12 },
+  cannon120: { dmg: 300, t: 'ap', range: 285, rof: 3.7, proj: 'shell', speed: 1800, splash: 10, fx: 'cannon', snd: 'cannon', recoil: 5, shake: .18 },
+  cannon120L: { dmg: 305, t: 'ap', range: 310, rof: 3.7, proj: 'shell', speed: 1900, splash: 10, fx: 'cannon', snd: 'cannon', recoil: 5.5, shake: .18 },
+  cannon120A: { dmg: 285, t: 'ap', range: 285, rof: 2.9, proj: 'shell', speed: 1800, splash: 10, fx: 'cannon', snd: 'cannon', recoil: 5, shake: .18 },
+  cannon125: { dmg: 320, t: 'ap', range: 280, rof: 4.0, proj: 'shell', speed: 1750, splash: 11, fx: 'cannon', snd: 'cannon', recoil: 5, shake: .2 },
+  cannon125X: { dmg: 360, t: 'ap', range: 300, rof: 3.8, proj: 'shell', speed: 1950, splash: 12, fx: 'cannon', snd: 'cannon', recoil: 6, shake: .22 },
+  gla: { dmg: 300, t: 'heat', range: 360, rof: 11, proj: 'missile', speed: 330, fx: 'cannon', snd: 'cannon', recoil: 4 }, // gun-launched ATGM
+  how155: { dmg: 230, t: 'he', range: 1000, min: 230, rof: 7, proj: 'arty', speed: 430, splash: 56, fx: 'how', snd: 'how', recoil: 8, acc: 46, shake: .1 },
+  how155P: { dmg: 210, t: 'he', range: 1080, min: 230, rof: 9, burst: 3, bgap: 0.7, proj: 'arty', speed: 450, splash: 52, fx: 'how', snd: 'how', recoil: 8, acc: 32, shake: .1 },
+  mlrs: { dmg: 120, t: 'rocket', range: 880, min: 200, rof: 15, salvo: 6, sgap: 0.28, proj: 'mlrs', speed: 400, splash: 46, fx: 'mlrs', snd: 'mlrs', acc: 72 },
+  gmlrs: { dmg: 330, t: 'rocket', range: 1050, min: 200, rof: 16, salvo: 3, sgap: 0.5, proj: 'mlrs', speed: 520, splash: 50, fx: 'mlrs', snd: 'mlrs', acc: 18 },
+  hmlrs: { dmg: 280, t: 'rocket', range: 1100, min: 260, rof: 20, salvo: 4, sgap: 0.6, proj: 'mlrs', speed: 480, splash: 62, fx: 'mlrs', snd: 'mlrs', acc: 55 },
+  jobaria: { dmg: 95, t: 'rocket', range: 820, min: 200, rof: 28, salvo: 20, sgap: 0.11, proj: 'mlrs', speed: 400, splash: 40, fx: 'mlrs', snd: 'mlrs', acc: 120 },
+  thermo: { dmg: 170, t: 'thermo', range: 560, min: 120, rof: 18, salvo: 12, sgap: 0.14, proj: 'mlrs', speed: 330, splash: 58, fx: 'mlrs', snd: 'mlrs', acc: 80, thermo: 1 },
+  aagun: { dmg: 20, t: 'aagun', range: 380, rof: 0.9, burst: 6, bgap: 0.06, proj: 'shell', speed: 1600, splash: 10, fx: 'auto', snd: 'aagun', tracer: 1, air: 1, flak: 1 },
+  sam: { dmg: 240, t: 'aa', range: 540, rof: 5, proj: 'aamis', speed: 720, air: 1, ground: 0, fx: 'sam', snd: 'sam' },
+  samL: { dmg: 380, t: 'aa', range: 820, rof: 6, salvo: 2, sgap: 0.6, proj: 'aamis', speed: 900, air: 1, ground: 0, fx: 'sam', snd: 'sam' },
+  stinger: { dmg: 150, t: 'aa', range: 420, rof: 4.5, proj: 'aamis', speed: 650, air: 1, ground: 0, fx: 'launch', snd: 'sam' },
+  heli_gun: { dmg: 16, t: 'auto', range: 245, rof: 0.8, burst: 6, bgap: 0.07, proj: 'hit', fx: 'auto', snd: 'chain', tracer: 1, splash: 4 },
+  heli_atgm: { dmg: 280, t: 'heat', range: 330, rof: 3.4, proj: 'missile', speed: 360, fx: 'launch', snd: 'atgm', splash: 14 },
+  heli_rkt: { dmg: 60, t: 'rocket', range: 280, rof: 5, salvo: 6, sgap: 0.07, proj: 'rocket', speed: 520, splash: 22, fx: 'rpg', snd: 'rkt', acc: 0.07 },
+  jet_bomb: { dmg: 560, t: 'bomb', range: 70, rof: 0.6, proj: 'bomb', splash: 72, snd: 'bomb', ammo: 2 },
+  jet_bomb3: { dmg: 520, t: 'bomb', range: 70, rof: 0.5, proj: 'bomb', splash: 70, snd: 'bomb', ammo: 3 },
+  jet_msl: { dmg: 330, t: 'heat', range: 400, rof: 0.7, proj: 'missile', speed: 720, fx: 'launch', snd: 'atgm', splash: 22, ammo: 4 },
+  jet_aam: { dmg: 360, t: 'aa', range: 520, rof: 1, proj: 'aamis', speed: 950, air: 1, ground: 0, fx: 'sam', snd: 'sam', ammo: 2 },
+  drone_atgm: { dmg: 250, t: 'heat', range: 350, rof: 7, proj: 'missile', speed: 330, fx: 'launch', snd: 'atgm', splash: 14 },
+  lancet: { dmg: 460, t: 'heat', range: 30, rof: 99, proj: 'kami', splash: 20 },
+  def_mg: { dmg: 14, t: 'mg', range: 270, rof: 0.6, burst: 6, bgap: 0.08, proj: 'hit', fx: 'mg', snd: 'hmg', tracer: 0.5, air: 1 },
+  def_atgm: { dmg: 320, t: 'heat', range: 340, rof: 4.6, proj: 'missile', speed: 320, fx: 'launch', snd: 'atgm', splash: 14 },
+};
+
+/* ---------- Factions ---------- */
+const TEAMCOL = ['#3a7be0', '#d8402f', '#e8b923', '#23a9c4', '#3aa357', '#9a5fd6', '#e8762a', '#d9d9d9'];
+
+const FACTIONS = {
+  usa: {
+    id: 'usa', name: 'الولايات المتحدة', short: 'أمريكا', col: 0, cap: 'واشنطن',
+    theme: 'تقنية متقدمة وتفوق جوي', perk: 'الطائرات أقوى بنسبة 15% والمدى البصري أبعد',
+    camo: 'usa', uni: 'usa', bstyle: 'usa',
+    mod: { airHp: 1.15, vision: 1.1 }
+  },
+  rus: {
+    id: 'rus', name: 'روسيا', short: 'روسيا', col: 1, cap: 'موسكو',
+    theme: 'دروع ثقيلة ومدفعية مدمّرة', perk: 'المركبات أقوى تحمّلاً بنسبة 12%',
+    camo: 'rus', uni: 'rus', bstyle: 'rus',
+    mod: { vehHp: 1.12 }
+  },
+  chn: {
+    id: 'chn', name: 'الصين', short: 'الصين', col: 2, cap: 'بكين',
+    theme: 'إنتاج ضخم وأعداد كبيرة', perk: 'الوحدات أرخص بنسبة 12% وتزداد قوتها عند التجمّع',
+    camo: 'chn', uni: 'chn', bstyle: 'chn',
+    mod: { cost: 0.88, horde: 1 }
+  },
+  eu: {
+    id: 'eu', name: 'الاتحاد الأوروبي', short: 'أوروبا', col: 3, cap: 'بروكسل',
+    theme: 'دقة عالية وتحصينات قوية', perk: 'المباني والتحصينات أقوى بنسبة 20% والمدفعية أدق',
+    camo: 'eu', uni: 'eu', bstyle: 'eu',
+    mod: { bldHp: 1.2, artyAcc: 0.7 }
+  },
+  arb: {
+    id: 'arb', name: 'التحالف العربي', short: 'العرب', col: 4, cap: 'الرياض',
+    theme: 'ثروة نفطية وسرعة حركة', perk: 'دخل الإمداد والنفط أعلى بنسبة 25% والمركبات ذات العجلات أسرع',
+    camo: 'arb', uni: 'arb', bstyle: 'arb',
+    mod: { income: 1.25, wheelSpeed: 1.12 }
+  },
+};
+const FACTION_IDS = ['usa', 'rus', 'chn', 'eu', 'arb'];
+
+/* ---------- Unit role templates ---------- */
+const ROLES = {
+  rifle: { cls: 'inf', armor: ARM.INF, hp: 120, speed: 27, r: 5, vision: 250, cost: 225, time: 5, pop: 1, build: 'barracks', cap: 1, cat: 'inf', w: ['rifle'] },
+  at: { cls: 'inf', armor: ARM.INF, hp: 110, speed: 25, r: 5, vision: 250, cost: 300, time: 6, pop: 1, build: 'barracks', cat: 'inf', w: ['rpg'] },
+  sniper: { cls: 'inf', armor: ARM.INF, hp: 90, speed: 26, r: 5, vision: 330, cost: 600, time: 9, pop: 1, build: 'barracks', cat: 'inf', w: ['sniper'], req: ['ops'] },
+  spec: { cls: 'inf', armor: ARM.INF, hp: 240, speed: 31, r: 5, vision: 300, cost: 1500, time: 16, pop: 2, build: 'barracks', cat: 'inf', w: ['spec'], req: ['ops'], abil: 'c4', cap: 1 },
+  scout: { cls: 'veh', mob: 'wheel', armor: ARM.LIGHT, hp: 330, speed: 125, turn: 3.4, tturn: 4, r: 10, vision: 380, cost: 700, time: 8, pop: 1, build: 'factory', cat: 'veh', w: ['hmg'] },
+  ifv: { cls: 'veh', mob: 'track', armor: ARM.MED, hp: 650, speed: 74, turn: 2.6, tturn: 2.6, r: 13, vision: 300, cost: 1000, time: 11, pop: 2, build: 'factory', cat: 'veh', w: ['auto25', 'atgm'] },
+  mbt: { cls: 'veh', mob: 'track', armor: ARM.HEAVY, hp: 1150, speed: 58, turn: 2.0, tturn: 1.7, r: 15, vision: 300, cost: 1600, time: 15, pop: 3, build: 'factory', cat: 'veh', w: ['cannon120', 'coax'] },
+  tank2: { cls: 'veh', mob: 'track', armor: ARM.HEAVY, hp: 1000, speed: 60, turn: 2.0, tturn: 1.8, r: 15, vision: 300, cost: 1400, time: 14, pop: 3, build: 'factory', cat: 'veh', w: ['cannon105', 'coax'], req: ['ops'] },
+  arty: { cls: 'veh', mob: 'track', armor: ARM.LIGHT, hp: 460, speed: 48, turn: 1.8, tturn: 1.2, r: 15, vision: 280, cost: 1400, time: 15, pop: 3, build: 'factory', cat: 'veh', w: ['how155'], req: ['ops'], deployT: 1.2 },
+  mlrs: { cls: 'veh', mob: 'wheel', armor: ARM.LIGHT, hp: 420, speed: 64, turn: 2.0, tturn: 1.4, r: 15, vision: 260, cost: 1600, time: 16, pop: 3, build: 'factory', cat: 'veh', w: ['mlrs'], req: ['ops'] },
+  aa: { cls: 'veh', mob: 'wheel', armor: ARM.LIGHT, hp: 520, speed: 72, turn: 2.4, tturn: 3.2, r: 14, vision: 440, cost: 1000, time: 11, pop: 2, build: 'factory', cat: 'veh', w: ['aagun', 'sam'] },
+  heli: { cls: 'air', fly: 'heli', armor: ARM.AIR, hp: 720, speed: 155, turn: 2.4, r: 17, alt: 70, vision: 360, cost: 1500, time: 16, pop: 3, build: 'airfield', cat: 'air', w: ['heli_gun', 'heli_atgm'] },
+  jet: { cls: 'air', fly: 'jet', armor: ARM.AIR, hp: 620, speed: 430, turn: 1.7, r: 18, alt: 170, vision: 420, cost: 2000, time: 18, pop: 3, build: 'airfield', cat: 'air', w: ['jet_bomb', 'jet_aam'], req: ['ops'] },
+  drone: { cls: 'air', fly: 'drone', armor: ARM.AIR, hp: 300, speed: 115, turn: 1.3, r: 13, alt: 120, vision: 520, cost: 900, time: 12, pop: 2, build: 'airfield', cat: 'air', w: ['drone_atgm'] },
+  supply: { cls: 'veh', mob: 'wheel', armor: ARM.LIGHT, hp: 520, speed: 82, turn: 2.4, r: 12, vision: 220, cost: 600, time: 10, pop: 1, build: 'supply', cat: 'mach', harvest: 300 },
+  // Construction machine (the only one): armoured engineering vehicle
+  eng: { cls: 'veh', mob: 'track', armor: ARM.HEAVY, hp: 1000, speed: 56, turn: 2.1, r: 14, vision: 260, cost: 1000, time: 10, pop: 1, build: 'hq', cat: 'mach', work: { dig: 1.2, frame: 1, pour: 1, finish: 1.1, pave: 1 }, repair: 30 },
+};
+const MACHINE_ROLES = ['eng'];
+const COMBAT_ROLES = ['rifle', 'at', 'sniper', 'spec', 'scout', 'ifv', 'mbt', 'tank2', 'arty', 'mlrs', 'aa', 'heli', 'jet', 'drone'];
+const WORK_NAMES = { dig: 'حفر الأساسات', frame: 'رفع الهيكل', pour: 'صبّ الخرسانة', finish: 'التشطيب', pave: 'الرصف والتعبيد' };
+const MACHINE_INFO = {
+  eng: { name: 'عربة هندسية مدرعة', desc: 'آلة البناء الوحيدة: مدرعة ثقيلة تبني كل المباني تحت النار وتصلح المركبات والمباني.' },
+};
+
+/* ---------- Per-faction rosters (real equipment names) ---------- */
+// Each entry: role -> overrides {n: name, d: description, w: weapons, ...}
+const ROSTER = {
+  usa: {
+    rifle: { n: 'جندي مشاة', sub: 'بندقية M4A1', d: 'مشاة البحرية والجيش الأمريكي ببندقية M4A1، فعّال ضد المشاة ويستطيع الاستيلاء على المنشآت.' },
+    at: { n: 'رامي جافلين', sub: 'FGM-148 Javelin', d: 'صاروخ جافلين يضرب الدبابة من الأعلى حيث الدرع أضعف.', w: ['javelin'] },
+    sniper: { n: 'قناص', sub: 'M107 عيار 12.7', d: 'يصطاد المشاة من مسافة بعيدة جداً.' },
+    spec: { n: 'قوات دلتا', sub: 'قوات خاصة', d: 'نخبة القوات الخاصة: تقاتل بدقة وتزرع عبوات C4 لتدمير المباني.' },
+    scout: { n: 'JLTV', sub: 'رشاش M2 عيار 12.7', d: 'مركبة تكتيكية خفيفة سريعة للاستطلاع ومطاردة المشاة.' },
+    ifv: { n: 'M2A3 برادلي', sub: 'مدفع 25 ملم + صواريخ TOW', d: 'عربة قتال مشاة بمدفع بوشماستر وقاذف صواريخ TOW المضادة للدروع.', w: ['auto25', 'atgm'] },
+    mbt: { n: 'M1A2 SEPv3 أبرامز', sub: 'مدفع 120 ملم M256', d: 'دبابة القتال الرئيسية الأمريكية بمحرك توربيني ودرع مركّب.', w: ['cannon120', 'coax', 'hmg'], hp: 1180 },
+    tank2: { n: 'M10 بوكر', sub: 'مدفع 105 ملم', d: 'دبابة دعم خفيفة سريعة لمرافقة المشاة.', w: ['cannon105', 'coax'], hp: 780, speed: 74, cost: 1150, armor: ARM.MED },
+    arty: { n: 'M109A7 بالادين', sub: 'هاوتزر 155 ملم', d: 'مدفعية ذاتية الحركة بعيدة المدى تدك التجمعات والمباني.' },
+    mlrs: { n: 'M142 هيمارس', sub: 'صواريخ GMLRS موجهة', d: 'راجمة على عجلات تطلق صواريخ موجهة بدقة عالية لمسافات بعيدة.', w: ['gmlrs'] },
+    aa: { n: 'سترايكر M-SHORAD', sub: 'مدفع 30 ملم + ستينغر', d: 'دفاع جوي قصير المدى يرافق القوات ويسقط المروحيات والمسيّرات.', w: ['aagun', 'stinger'], mob: 'wheel' },
+    heli: { n: 'AH-64E أباتشي', sub: 'هيلفاير + مدفع 30 ملم', d: 'المروحية الهجومية الأشهر، صياد الدبابات بصواريخ هيلفاير.', w: ['heli_gun', 'heli_atgm'] },
+    jet: { n: 'F-35A لايتنينغ II', sub: 'مقاتلة شبحية', d: 'مقاتلة شبحية من الجيل الخامس تلقي قنابل JDAM ويصعب على الدفاعات رصدها.', stealth: 1, w: ['jet_bomb', 'jet_aam'] },
+    drone: { n: 'MQ-9 ريبر', sub: 'مسيّرة هجومية', d: 'مسيّرة استطلاع وهجوم بعيدة المدى بصواريخ هيلفاير.' },
+    supply: { n: 'شاحنة HEMTT', sub: 'نقل الإمدادات', d: 'تنقل الإمدادات من المستودعات إلى مركز الإمداد.' },
+  },
+  rus: {
+    rifle: { n: 'جندي مشاة', sub: 'بندقية AK-12', d: 'مشاة روسية ببندقية AK-12، تستطيع الاستيلاء على المنشآت.', w: ['rifle2'] },
+    at: { n: 'رامي RPG-29', sub: 'RPG-29 فامبير', d: 'قاذف ثقيل يخترق دروع الدبابات من مسافة قريبة.', w: ['rpg'], hp: 115 },
+    sniper: { n: 'قناص', sub: 'SV-98', d: 'قناص روسي يصطاد المشاة من بعيد.' },
+    spec: { n: 'سبيتسناز', sub: 'قوات خاصة', d: 'القوات الخاصة الروسية: قتال قريب ممتاز وعبوات تدمير.' },
+    scout: { n: 'تيغر-M', sub: 'رشاش كورد 12.7', d: 'مركبة GAZ تيغر مدرعة خفيفة للاستطلاع السريع.' },
+    ifv: { n: 'BMP-3', sub: 'مدفع 100 ملم + 30 ملم', d: 'عربة قتال مشاة بمدفعين: 100 ملم شديد الانفجار و30 ملم سريع.', w: ['gun100', 'auto30'] },
+    mbt: { n: 'T-90M بروريف', sub: 'مدفع 125 ملم + صاروخ موجّه', d: 'دبابة روسية حديثة بدرع تفاعلي ريليكت وتطلق صواريخ عبر السبطانة.', w: ['cannon125', 'coax', 'gla'] },
+    tank2: { n: 'T-14 أرماتا', sub: 'برج غير مأهول + نظام أفغانيت', d: 'أثقل دبابات روسيا بنظام حماية نشط يعترض الصواريخ القادمة.', w: ['cannon125X', 'coax'], hp: 1500, speed: 54, cost: 2300, time: 20, aps: 0.45, pop: 4 },
+    arty: { n: '2S19 مستا-S', sub: 'هاوتزر 152 ملم', d: 'مدفعية ثقيلة ذاتية الحركة بعيدة المدى.' },
+    mlrs: { n: 'TOS-1A سولنتسيبيوك', sub: 'صواريخ حرارية', d: 'راجمة صواريخ حرارية مدمّرة على هيكل دبابة، تحرق المشاة والمباني.', w: ['thermo'], mob: 'track', hp: 760, armor: ARM.MED, cost: 1800 },
+    aa: { n: 'بانتسير-S1', sub: 'مدفعان 30 ملم + صواريخ', d: 'منظومة دفاع جوي تجمع المدافع والصواريخ مع رادار دوّار.', w: ['aagun', 'sam'] },
+    heli: { n: 'Ka-52 أليغاتور', sub: 'دواران متعاكسان', d: 'مروحية هجومية بمروحتين متعاكستين وصواريخ فيخر.' },
+    jet: { n: 'Su-57', sub: 'مقاتلة جيل خامس', d: 'مقاتلة روسية متعددة المهام تطلق صواريخ جو-أرض دقيقة.', w: ['jet_msl', 'jet_aam'] },
+    drone: { n: 'لانسيت', sub: 'ذخيرة جوّالة انتحارية', d: 'مسيّرة انتحارية تنقض على المركبات وتدمرها.', w: ['lancet'], kami: 1, hp: 120, cost: 500, time: 7, speed: 150, pop: 1 },
+    supply: { n: 'شاحنة كاماز', sub: 'نقل الإمدادات', d: 'تنقل الإمدادات إلى مركز الإمداد.' },
+  },
+  chn: {
+    rifle: { n: 'جندي مشاة', sub: 'بندقية QBZ-191', d: 'مشاة جيش التحرير ببندقية QBZ-191 الحديثة.' },
+    at: { n: 'رامي PF-98', sub: 'قاذف 120 ملم', d: 'قاذف صواريخ ثقيل مضاد للدروع.' },
+    sniper: { n: 'قناص', sub: 'QBU-88', d: 'قناص دقيق لاصطياد المشاة.' },
+    spec: { n: 'فهود الثلج', sub: 'قوات خاصة', d: 'وحدة الكوماندوز النخبوية بعبوات تدمير وتسليح متقدم.' },
+    scout: { n: 'دونغفنغ مينغشي', sub: 'رشاش QJZ-89', d: 'مركبة تكتيكية صينية سريعة متعددة المهام.' },
+    ifv: { n: 'ZBD-04A', sub: 'مدفع 100 ملم + 30 ملم', d: 'عربة قتال مشاة برمائية بمدفعين ودرع إضافي.', w: ['gun100', 'auto30'] },
+    mbt: { n: 'Type 99A', sub: 'مدفع 125 ملم', d: 'أقوى دبابات الصين بدرع تفاعلي وشكل برج سهمي.', w: ['cannon125', 'coax', 'gla'], hp: 1160 },
+    tank2: { n: 'Type 96B', sub: 'مدفع 125 ملم', d: 'دبابة قتال رئيسية اقتصادية تُنتج بأعداد كبيرة.', w: ['cannon125', 'coax'], hp: 950, speed: 62, cost: 1150, time: 12, req: [] },
+    arty: { n: 'PLZ-05', sub: 'هاوتزر 155 ملم', d: 'مدفعية ذاتية الحركة صينية بعيدة المدى.' },
+    mlrs: { n: 'PHL-16', sub: 'صواريخ ثقيلة 370 ملم', d: 'راجمة ضخمة على 8 عجلات تطلق صواريخ ثقيلة بعيدة المدى.', w: ['hmlrs'] },
+    aa: { n: 'PGZ-09', sub: 'مدفعان 35 ملم', d: 'مدفعية مضادة للطائرات مزدوجة بتوجيه راداري.', w: ['aagun', 'stinger'], mob: 'track' },
+    heli: { n: 'Z-10', sub: 'مروحية هجومية', d: 'مروحية الهجوم الصينية بصواريخ مضادة للدروع.' },
+    jet: { n: 'J-20', sub: 'مقاتلة شبحية', d: 'مقاتلة شبحية ثقيلة بتصميم بطّي، تفوق جوي وضربات دقيقة.', w: ['jet_bomb', 'jet_aam'], stealth: 1 },
+    drone: { n: 'وينغ لونغ II', sub: 'مسيّرة هجومية', d: 'مسيّرة صينية متوسطة الارتفاع للاستطلاع والهجوم.' },
+    supply: { n: 'شاحنة شانشي', sub: 'نقل الإمدادات', d: 'تنقل الإمدادات إلى مركز الإمداد.' },
+  },
+  eu: {
+    rifle: { n: 'جندي مشاة', sub: 'بندقية HK416', d: 'مشاة أوروبية ببندقية HK416 عالية الدقة.', w: ['rifle2'] },
+    at: { n: 'رامي بانزرفاوست 3', sub: 'Panzerfaust 3', d: 'قاذف ألماني مضاد للدروع بقدرة اختراق عالية.' },
+    sniper: { n: 'قناص', sub: 'G28', d: 'قناص دقيق لاصطياد المشاة.' },
+    spec: { n: 'قوات KSK', sub: 'قوات خاصة', d: 'قوات العمليات الخاصة الألمانية بعبوات تدمير.' },
+    scout: { n: 'فينيك', sub: 'رشاش 12.7 + سارية رصد', d: 'مركبة استطلاع منخفضة بمستشعرات بعيدة المدى.', vision: 460, w: ['hmg'] },
+    ifv: { n: 'بوما', sub: 'مدفع 30 ملم + صواريخ سبايك', d: 'من أكثر عربات القتال تدريعاً وتطوراً في العالم.', w: ['auto30', 'atgm'], hp: 720 },
+    mbt: { n: 'ليوبارد 2A7', sub: 'مدفع 120 ملم L55', d: 'الدبابة الألمانية ذات البرج السهمي ومدفع طويل دقيق بعيد المدى.', w: ['cannon120L', 'coax'] },
+    tank2: { n: 'AMX-10RC', sub: 'مدفع 105 ملم على عجلات', d: 'مدمرة دبابات فرنسية سريعة على ست عجلات.', w: ['cannon105', 'coax'], mob: 'wheel', hp: 620, armor: ARM.LIGHT, speed: 105, cost: 1100, time: 11 },
+    arty: { n: 'PzH 2000', sub: 'هاوتزر 155 ملم L52', d: 'أسرع مدفعية ذاتية في العالم: تطلق ثلاث قذائف متتالية بدقة عالية.', w: ['how155P'] },
+    mlrs: { n: 'MARS II', sub: 'راجمة صواريخ', d: 'راجمة صواريخ مجنزرة أوروبية.', mob: 'track', w: ['mlrs'] },
+    aa: { n: 'سكاي رينجر 30', sub: 'مدفع 30 ملم + صواريخ', d: 'برج دفاع جوي حديث على مدرعة بوكسر.', w: ['aagun', 'stinger'] },
+    heli: { n: 'تايغر', sub: 'مروحية هجومية', d: 'المروحية الهجومية الأوروبية المشتركة.' },
+    jet: { n: 'يوروفايتر تايفون', sub: 'مقاتلة متعددة المهام', d: 'مقاتلة أوروبية بجناح دلتا رشيقة في القتال الجوي والضربات.', w: ['jet_bomb', 'jet_aam'] },
+    drone: { n: 'باترولر', sub: 'مسيّرة استطلاع وهجوم', d: 'مسيّرة أوروبية طويلة التحليق.' },
+    supply: { n: 'شاحنة MAN', sub: 'نقل الإمدادات', d: 'تنقل الإمدادات إلى مركز الإمداد.' },
+  },
+  arb: {
+    rifle: { n: 'جندي مشاة', sub: 'بندقية G3', d: 'مشاة عربية ببندقية G3 المصنعة محلياً، تستولي على المنشآت.' },
+    at: { n: 'رامي RPG-32 هاشم', sub: 'قاذف هاشم', d: 'قاذف أردني حديث مضاد للدروع.' },
+    sniper: { n: 'قناص النخبة', sub: 'بندقية قنص', d: 'قناص دقيق لاصطياد المشاة.' },
+    spec: { n: 'قوات الصاعقة', sub: 'قوات خاصة', d: 'قوات خاصة عربية نخبوية بعبوات تدمير.' },
+    scout: { n: 'نمر', sub: 'رشاش 12.7', d: 'مركبة مدرعة إماراتية سريعة متعددة المهام.' },
+    ifv: { n: 'ربدان', sub: 'مدفع 100 ملم + 30 ملم', d: 'عربة قتال إماراتية بثماني عجلات وبرج مزدوج المدفع.', w: ['gun100', 'auto30'], mob: 'wheel', speed: 88, hp: 600 },
+    mbt: { n: 'لوكلير', sub: 'مدفع 120 ملم بلقّم آلي', d: 'دبابة سريعة بلقّم آلي يطلق أسرع من أي دبابة أخرى.', w: ['cannon120A', 'coax'], speed: 63 },
+    tank2: { n: 'M60A3 باتون', sub: 'مدفع 105 ملم', d: 'دبابة متينة واقتصادية خدمت طويلاً في الجيوش العربية.', w: ['cannon105', 'hmg'], hp: 980, speed: 52, cost: 1050, time: 12, req: [] },
+    arty: { n: 'قيصر CAESAR', sub: 'هاوتزر 155 ملم على شاحنة', d: 'مدفعية سريعة الحركة على عجلات.', mob: 'wheel', speed: 76, hp: 400 },
+    mlrs: { n: 'جوباريا', sub: '240 صاروخاً', d: 'أضخم راجمة صواريخ في العالم: رشقة هائلة تغطي مساحة واسعة.', w: ['jobaria'], hp: 520, speed: 50, cost: 2000, time: 20, pop: 4 },
+    aa: { n: 'شاهين', sub: 'صواريخ أرض-جو', d: 'منظومة صواريخ قصيرة المدى على هيكل مجنزر.', w: ['sam', 'hmg'], mob: 'track' },
+    heli: { n: 'AH-1F كوبرا', sub: 'مروحية هجومية', d: 'مروحية هجومية رشيقة واقتصادية.', w: ['heli_gun', 'heli_rkt'], cost: 1250, hp: 620 },
+    jet: { n: 'F-15SA', sub: 'مقاتلة ضاربة ثقيلة', d: 'مقاتلة ثقيلة تحمل حمولة قنابل كبيرة.', w: ['jet_bomb3', 'jet_aam'], hp: 700 },
+    drone: { n: 'صقر-1', sub: 'مسيّرة هجومية', d: 'مسيّرة هجومية سعودية.' },
+    supply: { n: 'شاحنة إمداد', sub: 'نقل الإمدادات', d: 'تنقل الإمدادات إلى مركز الإمداد.' },
+  },
+};
+
+/* ---------- Buildings ---------- */
+// works = amount of work for each construction stage (machine-seconds at efficiency 1)
+const BLD = {
+  hq: { n: 'مقر القيادة', w: 5, h: 5, hp: 5200, cost: 3000, iron: 900, ironInc: 8, partsInc: 6, incomeT: 5, power: 3, vision: 360, prod: ['mach'], height: 26, works: { dig: 14, frame: 22, pour: 16, finish: 12 }, cat: 'base', d: 'قلب القاعدة: يُنتج آلات البناء. خسارته كارثية.' },
+  power: { n: 'محطة كهرباء', w: 3, h: 3, hp: 1600, cost: 800, power: 10, vision: 220, height: 18, works: { dig: 4, frame: 6, pour: 5, finish: 4 }, cat: 'base', req: ['hq'], d: 'تمد القاعدة بالكهرباء. نقص الكهرباء يبطئ الإنتاج ويعطل الدفاعات.' },
+  barracks: { n: 'ثكنة', w: 3, h: 3, hp: 1800, cost: 600, power: -1, vision: 260, prod: ['inf'], height: 12, works: { dig: 4, frame: 6, pour: 5, finish: 4 }, cat: 'base', req: ['power'], d: 'تدريب المشاة والقوات الخاصة.' },
+  supply: { n: 'مركز الإمداد', w: 4, h: 3, hp: 2000, cost: 1500, power: -1, vision: 260, prod: ['supply'], height: 14, works: { dig: 5, frame: 7, pour: 6, finish: 5 }, cat: 'base', req: ['power'], d: 'تفرغ فيه شاحنات الإمداد حمولتها. يأتي مع شاحنة مجانية.' },
+  factory: { n: 'مصنع المركبات', w: 4, h: 4, hp: 2600, cost: 2000, power: -2, vision: 260, prod: ['veh'], height: 20, works: { dig: 6, frame: 10, pour: 8, finish: 6 }, cat: 'base', req: ['barracks', 'supply'], d: 'يصنع الدبابات والمدرعات والمدفعية.' },
+  ops: { n: 'مركز العمليات', w: 3, h: 3, hp: 2000, cost: 2000, power: -3, vision: 420, height: 16, works: { dig: 5, frame: 8, pour: 6, finish: 7 }, cat: 'base', req: ['factory'], d: 'يفتح الوحدات المتقدمة والأبحاث وصلاحيات القائد والخريطة المصغرة الكاملة.', radar: 1 },
+  airfield: { n: 'مطار عسكري', w: 6, h: 4, hp: 2600, cost: 2200, power: -2, vision: 300, prod: ['air'], height: 10, works: { dig: 7, frame: 8, pour: 10, finish: 6, pave: 8 }, cat: 'base', req: ['factory'], d: 'ينتج المروحيات والمقاتلات والمسيّرات، وتعود إليه المقاتلات للتذخير.' },
+  mg: { n: 'برج رشاش ثقيل', w: 2, h: 2, hp: 1300, cost: 600, power: 0, vision: 300, height: 8, works: { dig: 2, frame: 3, pour: 4, finish: 2 }, cat: 'def', req: ['barracks'], w_: ['def_mg'], tur: 1, d: 'تحصين مضاد للمشاة والمركبات الخفيفة.' },
+  atg: { n: 'منصة مضادة للدروع', w: 2, h: 2, hp: 1500, cost: 1000, power: -1, vision: 340, height: 8, works: { dig: 2, frame: 4, pour: 4, finish: 3 }, cat: 'def', req: ['factory'], w_: ['def_atgm'], tur: 1, d: 'تطلق صواريخ موجهة على الدبابات.' },
+  sam: { n: 'منظومة دفاع جوي', w: 3, h: 3, hp: 1500, cost: 1200, power: -2, vision: 520, height: 10, works: { dig: 3, frame: 5, pour: 4, finish: 4 }, cat: 'def', req: ['factory'], w_: ['samL'], tur: 1, d: 'تسقط الطائرات والمروحيات والمسيّرات من مسافة بعيدة.' },
+  wall: { n: 'سواتر دفاعية', w: 1, h: 1, hp: 700, cost: 60, power: 0, vision: 60, height: 4, works: { dig: 0.6, pour: 0.6 }, cat: 'def', req: ['barracks'], d: 'حواجز خرسانية تعيق تقدم العدو.', line: 1 },
+  super: { n: 'السلاح الاستراتيجي', w: 4, h: 4, hp: 3500, cost: 5000, power: -6, vision: 260, height: 14, works: { dig: 12, frame: 16, pour: 16, finish: 10 }, cat: 'base', req: ['ops', 'airfield'], d: 'سلاح الضربة الاستراتيجية للدولة. يُشحن ببطء ويُدمّر مساحة واسعة.', charge: 300, max1: 1 },
+  // neutral / special
+  depot: { n: 'مستودع إمدادات', w: 3, h: 3, hp: 99999, cost: 0, power: 0, vision: 100, height: 6, neutral: 1, res: 1, d: 'مخزون إمدادات تنقله شاحنات الإمداد.' },
+  mine: { n: 'منجم حديد', w: 2, h: 2, hp: 1400, cost: 800, iron: 0, power: -1, vision: 200, height: 12, works: { dig: 4, frame: 3, pour: 2, finish: 2 }, cat: 'base', ore: 1, ironInc: 45, incomeT: 5, d: 'يُبنى فوق عرق حديد ويستخرج الحديد اللازم لبناء المصانع والمباني.' },
+  partsdep: { n: 'مستودع موارد', w: 3, h: 3, hp: 1800, cost: 1200, iron: 200, power: -1, vision: 220, height: 12, works: { dig: 4, frame: 5, pour: 4, finish: 4 }, cat: 'base', partsInc: 30, incomeT: 5, d: 'يجمّع القطع والمكوّنات التي تحتاجها مع المال لإنتاج كل الوحدات.' },
+  city: { n: 'مدينة', w: 4, h: 4, hp: 3200, cost: 0, power: 0, vision: 240, height: 16, neutral: 1, capt: 1, income: 60, incomeT: 5, d: 'استولِ على المدينة بالمشاة لتدرّ عليك المال، ورقِّها حتى المستوى 3 لتكبر ويتضاعف دخلها.' },
+};
+const FBLD_NAMES = { // faction-specific building names
+  usa: { power: 'محطة توربينات غازية', super: 'منظومة تايفون (توماهوك)', sam: 'باتريوت PAC-3', atg: 'منصة TOW', mg: 'برج رشاش M2' },
+  rus: { power: 'محطة حرارية', super: 'قاعدة إسكندر-M', sam: 'S-400 تريومف', atg: 'منصة كورنيت', mg: 'برج رشاش كورد' },
+  chn: { power: 'محطة كهرباء', super: 'قاعدة صواريخ DF-17', sam: 'HQ-9', atg: 'منصة HJ-10', mg: 'برج رشاش QJZ' },
+  eu: { power: 'مزرعة رياح وطاقة شمسية', super: 'مركز ضربات ستورم شادو', sam: 'SAMP/T مامبا', atg: 'منصة سبايك', mg: 'برج رشاش MG3' },
+  arb: { power: 'محطة كهرباء غازية', super: 'قاعدة عاصفة الصقور', sam: 'منظومة عمّون', atg: 'منصة صواريخ موجهة', mg: 'برج رشاش ثقيل' },
+};
+const SUPER = {
+  usa: { n: 'ضربة توماهوك', d: '10 صواريخ كروز تنهال على المنطقة المحددة.', kind: 'cruise', count: 10, dmg: 650, r: 75, area: 210 },
+  rus: { n: 'صواريخ إسكندر-M', d: 'صاروخان باليستيان برأس حربي ضخم.', kind: 'ballistic', count: 2, dmg: 2400, r: 165, area: 70 },
+  chn: { n: 'ضربة DF-17 فرط صوتية', d: 'رأس انزلاقي فرط صوتي لا يمكن اعتراضه، انفجار هائل.', kind: 'hyper', count: 1, dmg: 3800, r: 215, area: 0 },
+  eu: { n: 'صواريخ ستورم شادو', d: '6 صواريخ كروز ذكية تختار المباني والأهداف الثمينة.', kind: 'smart', count: 6, dmg: 1300, r: 70, area: 260 },
+  arb: { n: 'عاصفة الصقور', d: 'سرب من المقاتلات يقصف شريطاً طويلاً بالقنابل.', kind: 'carpet', count: 4, dmg: 520, r: 70, area: 620 },
+};
+const POWERS = [
+  { id: 'para', n: 'إنزال مظلي', d: 'إنزال 8 جنود في أي مكان مكشوف.', rank: 2, cd: 220, r: 60 },
+  { id: 'infil', n: 'تسلل', d: 'فرقة كوماندوز محترفة تتسلل إلى أي نقطة — حتى خلف خطوط العدو.', rank: 2, cd: 200, r: 60 },
+  { id: 'barrage', n: 'قصف مدفعي مكثف', d: '36 قذيفة مدفعية ثقيلة تدك المنطقة المحددة.', rank: 3, cd: 200, r: 180 },
+  { id: 'strike', n: 'قصف بالطيران', d: 'طائرات قاذفة تدك الهدف المحدد.', rank: 2, cd: 180, r: 120 },
+  { id: 'drones', n: 'سرب طائرات مسيّرة', d: 'يطلق 4 طائرات مسيّرة هجومية نحو الهدف.', rank: 1, cd: 160, r: 80 },
+  { id: 'spy', n: 'تجسس', d: 'يكشف كل وحدات العدو ومبانيه على الخريطة لمدة 25 ثانية.', rank: 1, cd: 150, r: 0 },
+  { id: 'recon', n: 'استطلاع جوي', d: 'يكشف منطقة واسعة لمدة 30 ثانية.', rank: 1, cd: 90, r: 520 },
+  { id: 'nuke', n: 'السلاح النووي', d: 'رأس نووي تكتيكي يمحو كل شيء في دائرة واسعة. يتطلب أعلى رتبة.', rank: 5, cd: 480, r: 260 },
+  { id: 'repair', n: 'إصلاح طارئ', d: 'يصلح كل الوحدات في المنطقة فوراً.', rank: 2, cd: 150, r: 200 },
+];
+const FPOW_NAMES = {
+  usa: { strike: 'ضربة A-10 ثندربولت', recon: 'طائرة RQ-4 غلوبال هوك' },
+  rus: { strike: 'قصف Su-34', recon: 'قمر صناعي للاستطلاع' },
+  chn: { strike: 'قاذفات H-6K', recon: 'قمر ياوغان للاستطلاع' },
+  eu: { strike: 'ضربة رافال', recon: 'طائرة استطلاع' },
+  arb: { strike: 'ضربة تورنيدو', recon: 'طائرة استطلاع' },
+};
+const UPGRADES = [
+  { id: 'armor', n: 'دروع مركّبة متطورة', d: '+20% تحمّل لكل المركبات.', cost: 2000, time: 40, req: 'ops' },
+  { id: 'ammo', n: 'ذخيرة اختراق محسّنة', d: '+15% ضرر لكل مدافع الدبابات والمدرعات.', cost: 2000, time: 40, req: 'ops' },
+  { id: 'vest', n: 'دروع واقية للمشاة', d: '+25% تحمّل للمشاة.', cost: 1000, time: 30, req: 'barracks' },
+  { id: 'train', n: 'تدريب النخبة', d: 'المشاة الجدد يتخرجون برتبة مخضرم.', cost: 1500, time: 35, req: 'barracks' },
+  { id: 'guided', n: 'توجيه صاروخي محسّن', d: '+15% مدى للصواريخ الموجهة.', cost: 1800, time: 40, req: 'ops' },
+  { id: 'radar', n: 'رادارات متقدمة', d: '+20% مدى رؤية لكل الوحدات.', cost: 1200, time: 30, req: 'ops' },
+  { id: 'engine', n: 'محركات محسّنة', d: '+10% سرعة للمركبات.', cost: 1500, time: 35, req: 'factory' },
+];
+const RANKS = [
+  { n: 'جندي', xp: 0 }, { n: 'مخضرم', xp: 1 }, { n: 'نخبة', xp: 2.2 }, { n: 'بطل', xp: 4 }
+];
+const UNIT_HP_K = 1.5; // every unit is 50% sturdier than its listed health (applied when it spawns)
+const CMD_RANKS = [0, 0, 1500, 4000, 9000, 16000]; // commander XP thresholds for ranks 1..5
+const CMD_RANK_N = ['', 'نقيب', 'رائد', 'مقدم', 'عقيد', 'لواء'];
+
+/* Build the full unit table */
+const UNITS = {};
+function buildUnits() {
+  for (const k in UNITS) delete UNITS[k];
+  for (const f of FACTION_IDS) {
+    const roster = ROSTER[f];
+    for (const role of COMBAT_ROLES.concat(['supply'], EXTRA_ROLES)) {
+      if (roster[role] === null) continue; // role not fielded by this faction
+      const base = ROLES[role]; if (!base) continue; const o = roster[role] || {};
+      const u = Object.assign({}, base, o);
+      u.id = f + '_' + role; u.f = f; u.role = role;
+      u.n = o.n || role; u.sub = o.sub || ''; u.d = o.d || '';
+      u.w = (o.w || base.w || []).slice();
+      u.req = (o.req !== undefined ? o.req : base.req) || [];
+      UNITS[u.id] = u;
+    }
+    for (const role of MACHINE_ROLES) {
+      const u = Object.assign({}, ROLES[role]);
+      u.id = f + '_' + role; u.f = f; u.role = role; u.n = MACHINE_INFO[role].name; u.sub = 'آلة بناء'; u.d = MACHINE_INFO[role].desc;
+      u.w = (ROLES[role].w || []).slice(); u.req = ROLES[role].req || [];
+      UNITS[u.id] = u;
+    }
+  }
+  // apply faction modifiers
+  for (const id in UNITS) {
+    const u = UNITS[id], m = FACTIONS[u.f].mod;
+    if (m.cost) u.cost = Math.round(u.cost * m.cost / 25) * 25;
+    if (m.vehHp && u.cls === 'veh') u.hp = Math.round(u.hp * m.vehHp);
+    if (m.airHp && u.cls === 'air') u.hp = Math.round(u.hp * m.airHp);
+    if (m.vision) u.vision = Math.round(u.vision * m.vision);
+    if (m.wheelSpeed && u.mob === 'wheel') u.speed = Math.round(u.speed * m.wheelSpeed);
+    u.tur = u.cls === 'veh' && !u.work && !(u.harvest && !u.w.length) && !u.noTur;
+  }
+}
+
+const bldName = (f, type) => (FBLD_NAMES[f] && FBLD_NAMES[f][type]) || BLD[type].n;
+/* ---------- camouflage chosen by the player (custom battle) ---------- */
+const CAMO_OPTS = [['', 'افتراضي'], ['od', 'زيتوني عسكري'], ['usa', 'تان صحراوي'], ['arb', 'رملي'], ['rus', 'أخضر روسي'], ['eu', 'ناتو ثلاثي'], ['chn', 'رقمي غابات'], ['urban', 'رمادي حضري'], ['winter', 'شتوي'], ['fleck', 'فليكتارن'], ['split', 'شظايا'], ['navy', 'أزرق بحري رقمي'], ['jtiger', 'خطوط الأدغال'],
+  ['carbon', 'ألياف الكربون'], ['bronze', 'برونز مصقول'], ['silver', 'فضة لامعة'], ['gold', 'ذهب خالص'], ['tiger', 'النمر'], ['dragon', 'حراشف التنين'], ['lava', 'حمم البركان'], ['galaxy', 'المجرّة']]; // rarity + price: SHOP_CAT in js/ui/economy.js
+for (const f in FACTIONS) FACTIONS[f].camo0 = FACTIONS[f].camo;
+function applyCamo(f, key) { // the player's faction wears `key`; everyone else keeps their own paint
+  let ch = 0; for (const id in FACTIONS) { const want = id === f && key && CAMO_OPTS.some(o => o[0] === key) ? key : FACTIONS[id].camo0; if (FACTIONS[id].camo !== want) { FACTIONS[id].camo = want; ch = 1; } }
+  if (ch && typeof Icons !== 'undefined') Icons.clear();
+}
