@@ -67,8 +67,31 @@ const Shop = (function () {
     K.bind(s, map);
   }
   /* ---------- item details (also opened from the locked cards in battle setup) ---------- */
+  /* nation card: a header band in the nation's colour (flag, name, rarity, price or ownership), the tank beside the details
+     (theme, perk, three signature units). The box fits a landscape phone: the details scroll, the buttons always stay on screen. */
+  const STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>';
+  function natDetail(id, after) {
+    const it = Eco.item('nat', id); if (!it) return; const F = FACTIONS[id], b = Eco.bal(); const cur = it.own && (Menus.pickGet() || {}).f === id;
+    const air = UNITS[id + '_jet'] ? id + '_jet' : id + '_heli';
+    const unit = u => `<figure><img data-u="${u}" alt=""><figcaption>${esc((UNITS[u] || {}).n || '')}</figcaption></figure>`;
+    const short = it.own ? 0 : it.price - b[it.cur];
+    const tag = it.own ? `<span class="ndst">${cur ? '✓ دولتك الحالية' : '✓ مملوك'}</span>` : price(it);
+    const html = `<div class="ndet" style="${K.tcv(TEAMCOL[F.col])}">
+      <div class="ndhd"><span class="ndflag">${EMBLEM[id]}</span><div class="ndtt"><h3>${esc(it.n)}</h3><span class="ndrar" style="background:${RARITY[it.r].col}">${RARITY[it.r].n} · ${KIND_N.nat}</span></div>${tag}</div>
+      <div class="ndbody"><div class="ndart"><img data-u="${id}_mbt" alt=""></div>
+        <div class="ndinfo"><p class="ndtheme">${esc(F.theme)}</p>
+          <div class="ndperk">${STAR}<div><small>ميزة الدولة</small><b>${esc(F.perk)}</b></div></div>
+          <div class="ndsub">أبرز وحداتها</div><div class="ndunits">${unit(id + '_mbt')}${unit(air)}${unit(id + '_rifle')}</div>
+          ${short > 0 ? `<p class="dneed">ينقصك ${Eco.ico(it.cur)}<b>${fm(short)}</b> ${CUR_N[it.cur]}${it.cur === 's' ? ' — القصاصات الأسطورية تُجمع من الإنجازات الصعبة.' : ' — اجمعها من المعارك والمكافآت.'}</p>` : ''}</div></div></div>`;
+    const acts = [];
+    if (!it.own) acts.push(short > 0 ? { l: it.cur === 's' ? 'كيف أجمع القصاصات؟' : 'احصل على المزيد', cls: 'pri', fn: () => Rewards.open(it.cur === 's' ? 'shard' : null, after) } : { l: `شراء ${Eco.ico(it.cur)}${fm(it.price)}`, cls: 'pri', fn: () => buy('nat', id, after) });
+    else acts.push(cur ? { l: '✓ دولتك الحالية', cls: 'pri' } : { l: 'اختيار كدولتك', cls: 'pri', fn: () => { use('nat', id); K.toast('دولتك الآن: ' + it.n, 'good'); if (after) after(); } });
+    acts.push({ l: 'إغلاق' });
+    K.box(html, acts, { cls: 'ndbox', bind: d => fill(d) });
+  }
   function detail(k, id, after) {
     const it = Eco.item(k, id); if (!it) return; const b = Eco.bal();
+    if (k === 'nat') { natDetail(id, after); return; }
     let info = '';
     if (k === 'map') { const M = MAPS.find(m => m.id === id); info = `<p>${esc(M.d)}</p><div class="dchips"><i>${esc(it.sub)}</i><i><bdi dir="ltr">${M.w}×${M.h}</bdi></i></div>`; }
     else if (k === 'nat') { const F = FACTIONS[id]; info = `<p><b>${esc(F.theme)}</b></p><p class="muted">${esc(F.perk)}</p><div class="dunits"><img data-u="${id}_mbt" alt=""><img data-u="${UNITS[id + '_jet'] ? id + '_jet' : id + '_heli'}" alt=""><img data-u="${id}_rifle" alt=""></div>`; }
@@ -84,7 +107,7 @@ const Shop = (function () {
     else if (k === 'nat') acts.push({ l: 'اختيار كدولتك', cls: 'pri', fn: () => { use(k, id); K.toast('دولتك الآن: ' + it.n, 'good'); if (after) after(); } });
     else if (k === 'map') acts.push({ l: 'العب عليها', cls: 'pri', fn: () => { use(k, id); Menus.battle(); } });
     acts.push({ l: 'إغلاق' });
-    K.box(html, acts, { wide: true, bind: d => fill(d) });
+    K.box(html, acts, { wide: true, cls: 'sdbox', bind: d => fill(d) });
   }
   // a bought or chosen item becomes the current choice (nation, map or worn camouflage)
   function use(k, id) { if (k === 'camo') { Eco.equip(id); Menus.pickSet('camo', id); } else if (k === 'nat' || k === 'map') Menus.pickSet(k === 'nat' ? 'f' : 'map', id); }

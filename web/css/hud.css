@@ -261,3 +261,10 @@
 /* the side panel (units / buildings) is only as tall as its content; a long list scrolls inside it */
 #ctx{bottom:auto;max-height:calc(100% - var(--tb) - 8px - var(--sb));border-bottom:1px solid var(--line);border-bottom-left-radius:16px;box-shadow:-8px 6px 22px rgba(30,32,18,.32)}
 #ctx #grid{flex:0 1 auto;min-height:0}
+/* ===== v5 — the in-game top bar fits every phone (js/ui/hud.js → fitTopbar adds tf1…tf5 only while the bar is too wide) ===== */
+.tbtns{margin-right:0;margin-inline-start:auto;flex-shrink:0}
+#topbar.tf1 #gtime,#topbar.tf1 #rank{display:none}
+#topbar.tf2{gap:4px}#topbar.tf2 .res{gap:4px;font-size:12px}#topbar.tf2 .cap{padding:1px 6px;gap:3px}#topbar.tf2 #powerbar{width:32px}#topbar.tf2 #money{min-width:0;font-size:12.5px}#topbar.tf2 #lbtns button{padding:0 5px}
+#topbar.tf3 #lbtns button span{display:none}
+#topbar.tf4 #powerbar{display:none}#topbar.tf4 .tbtns button{min-width:28px}#topbar.tf4 #armyb button{width:25px}#topbar.tf4 #lbtns button{padding:0 4px}#topbar.tf4 .cap.rs span{min-width:0}
+#topbar.tf5 .res{min-width:0;flex:1 1 auto;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;touch-action:pan-x}#topbar.tf5 .res::-webkit-scrollbar{display:none}

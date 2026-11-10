@@ -35,7 +35,7 @@ const UI = (function () {
   function seg(name, opts, cur) { return `<div class="seg" data-seg="${name}">${opts.map(([v, l]) => `<button class="${String(v) === String(cur) ? 'on' : ''}" data-v="${v}">${l}</button>`).join('')}</div>`; }
   function segBind(root, fn) { root.querySelectorAll('.seg').forEach(sg => sg.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { SND.ui('click'); sg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); fn(sg.dataset.seg, b.dataset.v); }))); }
   function box(html, actions, opts) {
-    opts = opts || {}; modal = true; const d = el('div', 'modal', `<div class="mbox" style="${opts.ac ? acv(opts.ac) : ''}${opts.wide ? 'max-width:640px' : ''}">${html}<div class="row">${(actions || []).map((a, i) => `<button class="btn ${a.cls || ''}" data-i="${i}">${a.l}</button>`).join('')}</div></div>`);
+    opts = opts || {}; modal = true; const d = el('div', 'modal', `<div class="mbox${opts.cls ? ' ' + opts.cls : ''}" style="${opts.ac ? acv(opts.ac) : ''}${opts.wide ? 'max-width:640px' : ''}">${html}<div class="row">${(actions || []).map((a, i) => `<button class="btn ${a.cls || ''}" data-i="${i}">${a.l}</button>`).join('')}</div></div>`);
     document.body.appendChild(d); const close = () => { d.remove(); modal = document.querySelectorAll('.modal').length > 0; };
     d.querySelectorAll('[data-i]').forEach(b => b.onclick = ev => { ev.stopPropagation(); SND.ui('click'); const a = actions[+b.dataset.i]; if (a.keep) { a.fn && a.fn(d); return; } close(); a.fn && a.fn(d); });
     if (opts.bind) opts.bind(d, close); return {  close };
@@ -70,7 +70,7 @@ const UI = (function () {
     const img = minimapImage(m); const base = document.createElement('canvas'); base.width = m.w; base.height = m.h; base.getContext('2d').putImageData(new ImageData(img, m.w, m.h), 0, 0); mmBase = base; sizeMini();
     $('bSpeed').textContent = '×' + G.speed; $('bSpeed').classList.toggle('hid', !!G.net); $('bChat').classList.toggle('hid', !G.net); $('bMute').classList.toggle('muted', Settings.popups === false); $('chatlog').innerHTML = ''; $('chatbar').classList.add('hid'); $('netst').classList.toggle('hid', !G.net);
     $('wavebar').classList.toggle('hid', G.mode !== 'survival'); $('hud').classList.toggle('wave', G.mode === 'survival');
-    hudUpdate(true);
+    hudUpdate(true); fitTopbar(true); requestAnimationFrame(() => fitTopbar(true));
   }
   function exitGame() { closeTech(); closeCtx(true); G = null; $('hud').classList.add('hid'); }
   const TI = {
@@ -258,8 +258,22 @@ const UI = (function () {
     else if (it.k === 's') { const S = SUPER[f]; h = `<b>${esc(S.n)}</b><p>${esc(S.d)}</p>`; }
     t.innerHTML = h; t.classList.remove('hid');
   }
+  /* top bar: the right-hand buttons (menu, settings, pause, speed…) must always stay on screen. When the bar is wider than
+     the screen it compacts step by step (css/hud.css → #topbar.tf1…tf5): rank/time → tighter chips → icon-only buttons → no power bar → scrollable resources. */
+  const TB_FIT = ['tf1', 'tf2', 'tf3', 'tf4', 'tf5']; let tbW = -1, tbT = 0;
+  function fitTopbar(force) {
+    const tb = $('topbar'); if (!tb || !tb.offsetWidth) return;
+    if (force || tb.clientWidth !== tbW) { tbW = tb.clientWidth; for (const c of TB_FIT) tb.classList.remove(c); }
+    for (const c of TB_FIT) { if (!tbOver(tb)) break; tb.classList.add(c); }
+  }
+  function tbOver(tb) { // too wide, or the button group has slid into the bar's own padding (it sits at the end: right in English, left in Arabic)
+    if (tb.scrollWidth > tb.clientWidth + 1) return true;
+    const t = tb.querySelector('.tbtns'); if (!t) return false; const r = tb.getBoundingClientRect(), b = t.getBoundingClientRect(), cs = getComputedStyle(tb);
+    return cs.direction === 'rtl' ? b.left < r.left + parseFloat(cs.paddingLeft) - 1 : b.right > r.right - parseFloat(cs.paddingRight) + 1;
+  }
   function hudUpdate(force) {
     if (!G) return; const pl = G.me;
+    { const now = Date.now(); if (force || now - tbT > 1000) { tbT = now; fitTopbar(); } }
     $('money').textContent = '$' + fm(pl.money); $('iron').textContent = fm(pl.iron || 0); $('parts').textContent = fm(pl.parts || 0);
     const pp = pl.pprod, pu = pl.puse; const pf = $('pfill'); pf.style.width = Math.min(100, pp ? pu / pp * 100 : 100) + '%'; pf.className = pu > pp ? 'low' : pu > pp * 0.85 ? 'mid' : ''; $('ptext').textContent = pu + '/' + pp;
     $('pop').textContent = isFinite(pl.popCap) ? pl.pop + '/' + pl.popCap : String(pl.pop); $('rank').textContent = CMD_RANK_N[pl.rank] || ''; $('gtime').textContent = fmtTime(G.t);
@@ -470,6 +484,7 @@ const UI = (function () {
   }
   function matchEnded() { if (!G || !G.net) return; box('<h3>انتهت المعركة الجماعية</h3><p>حُسمت المعركة بين بقية اللاعبين.</p>', [{ l: 'العودة للردهة', cls: 'pri', fn: () => { paused = false; Net.backToLobby(); Main.endGame(); Lobby.open(); } }, { l: 'متابعة المشاهدة' }]); }
   function init() {
+    window.addEventListener('resize', () => { clearTimeout(fitTopbar.t); fitTopbar.t = setTimeout(() => fitTopbar(true), 150); });
     screens = $('screens'); miniInput(); 
     $('bPause').onclick = () => { SND.ui('click'); pause(); };
     $('bFreeze').onclick = ev => { ev.stopPropagation(); freeze(); }; $('frzGo').onclick = ev => { ev.stopPropagation(); freeze(false); };
@@ -495,5 +510,5 @@ const UI = (function () {
     box.appendChild(line); while (box.children.length > 6) box.firstChild.remove(); if (!c.sys) SND.ui('tick'); setTimeout(() => { line.classList.add('out'); setTimeout(() => line.remove(), 600); }, 9000);
   }
   const kit = { $, el, esc, fm, acv, tcv, gcv, hexRgb, icon, showScreen, hideScreens, top, bind, seg, segBind, box, confirmBox, toast, svgI };
-  return { sizeMini, netChat, init, matchEnded, title: () => Menus.title(), mainMenu: () => Menus.hub(), pauseMenu, enterGame, exitGame, toast, achToast, blocking, onSelect, ack, unitReady, placeMode, targetMode, pause, gameOver, frame,  showScreen, hideScreens,      get ctx() { return cx; },  get paused() { return paused; }, set paused(v) { paused = v; }, get modal() { return modal; }, $, kit };
+  return { sizeMini, fitTopbar, netChat, init, matchEnded, title: () => Menus.title(), mainMenu: () => Menus.hub(), pauseMenu, enterGame, exitGame, toast, achToast, blocking, onSelect, ack, unitReady, placeMode, targetMode, pause, gameOver, frame,  showScreen, hideScreens,      get ctx() { return cx; },  get paused() { return paused; }, set paused(v) { paused = v; }, get modal() { return modal; }, $, kit };
 })();

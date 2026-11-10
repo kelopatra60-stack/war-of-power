@@ -11,6 +11,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.PermissionRequest;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
@@ -28,8 +29,10 @@ import androidx.webkit.WebViewAssetLoader;
  */
 public class MainActivity extends Activity {
     private static final String HOME = "https://appassets.androidplatform.net/assets/www/index.html";
+    private static final int PICK_FILE = 41;
     private WebView web;
     private NetBridge net;
+    private ValueCallback<Uri[]> fileCb; // the page's <input type=file> waiting for the gallery (profile picture)
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     @Override
@@ -79,6 +82,23 @@ public class MainActivity extends Activity {
         web.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onPermissionRequest(PermissionRequest request) { request.grant(request.getResources()); }
+
+            // <input type=file> (the "+" on the commander screen): open the gallery / file picker and hand the chosen picture back to the page
+            @Override
+            public boolean onShowFileChooser(WebView view, ValueCallback<Uri[]> cb, FileChooserParams params) {
+                if (fileCb != null) fileCb.onReceiveValue(null);
+                fileCb = cb;
+                Intent pick = null;
+                try { pick = params.createIntent(); } catch (Exception ignored) { }
+                if (pick == null) { pick = new Intent(Intent.ACTION_GET_CONTENT); pick.addCategory(Intent.CATEGORY_OPENABLE); pick.setType("image/*"); }
+                try {
+                    startActivityForResult(Intent.createChooser(pick, null), PICK_FILE);
+                } catch (Exception e) {
+                    fileCb = null;
+                    cb.onReceiveValue(null);
+                }
+                return true;
+            }
         });
         net = new NetBridge(this, web);
         web.addJavascriptInterface(net, "TWNative");
@@ -123,6 +143,14 @@ public class MainActivity extends Activity {
         if (net != null) net.shutdown();
         if (web != null) web.destroy();
         super.onDestroy();
+    }
+
+    @Override
+    protected void onActivityResult(int code, int result, Intent data) {
+        super.onActivityResult(code, result, data);
+        if (code != PICK_FILE || fileCb == null) return;
+        fileCb.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(result, data)); // null when the player backs out
+        fileCb = null;
     }
 
     @Override

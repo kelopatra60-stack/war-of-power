@@ -124,7 +124,7 @@ const Menus = (function () {
   function camoURL(k) { if (CMU[k]) return CMU[k]; try { const src = camoPattern(k); const c = document.createElement('canvas'); c.width = 96; c.height = 60; c.getContext('2d').drawImage(src, 0, 0, 160, 100, 0, 0, 96, 60); return (CMU[k] = c.toDataURL()); } catch (e) { return ''; } }
   const myCol = () => pick.col >= 0 ? pick.col : FACTIONS[pick.f].col;
   let cfgTab = 'army';
-  const THEME_N = { desert: 'صحراء', snow: 'ثلوج', temperate: 'غابات', mountain: 'جبال', steppe: 'سهوب', mixed: 'متنوعة' };
+  const THEME_N = { desert: 'صحراء', snow: 'ثلوج', temperate: 'غابات', mountain: 'جبال', steppe: 'سهوب', mixed: 'متنوعة', lava: 'براكين' };
   const THEME_I = { all: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
     desert: '<path d="M3 19c3-3 6-3 9 0s6 3 9 0"/><path d="M10 15V7a1.6 1.6 0 0 1 3.2 0v8M13.2 10.5h1.6a1.6 1.6 0 0 0 1.6-1.6V8M10 12.5H8.4a1.6 1.6 0 0 1-1.6-1.6V10"/>',
     snow: '<path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9M9.5 4.5L12 7l2.5-2.5M9.5 19.5L12 17l2.5 2.5"/>',
@@ -237,6 +237,7 @@ const Menus = (function () {
   let userTab = 'me';
   function pickAvatar(done) {
     const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*'; inp.style.display = 'none'; document.body.appendChild(inp);
+    inp.addEventListener('cancel', () => inp.remove());
     inp.addEventListener('change', () => {
       const file = inp.files && inp.files[0]; inp.remove(); if (!file) return;
       const rd = new FileReader();

@@ -771,3 +771,43 @@ html.en .shead h2:before{order:-1}
 @media (prefers-reduced-motion:reduce){#splash *{animation-duration:.01s!important;animation-delay:0s!important}}
 /* English (left-to-right): arrows that point «back» or «forward» turn around */
 html.en .btn.back svg,html.en .bpback svg,html.en .gback svg,html.en .exar,html.en svg.chev{transform:scaleX(-1)}
+/* ===== v5 — nation card popup (js/ui/shop.js → natDetail): a header in the nation's colour, the tank beside the details, buttons always on screen ===== */
+.mbox.ndbox{display:flex;flex-direction:column;width:min(660px,calc(100vw - 24px));max-width:none;max-height:calc(100vh - 20px);max-height:calc(100dvh - 20px);padding:0;overflow:hidden;text-align:start}
+.mbox.ndbox>.row{flex:0 0 auto;margin:0;padding:10px 14px 14px;border-top:1px solid rgba(235,230,190,.14)}
+.ndet{flex:1 1 auto;min-height:0;display:flex;flex-direction:column}
+.ndhd{position:relative;display:flex;align-items:center;gap:12px;padding:10px 16px;background:linear-gradient(180deg,var(--tc) 0%,var(--tcd) 100%);border-bottom:3px solid #34351f;box-shadow:inset 0 2px 0 rgba(255,255,255,.28)}
+.ndhd::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(135deg,rgba(255,255,255,.06) 0 10px,transparent 10px 20px);pointer-events:none}
+.ndflag{position:relative;z-index:1;flex:0 0 auto;display:flex;padding:4px;border-radius:12px;background:rgba(20,20,8,.28);box-shadow:inset 0 0 0 2px rgba(255,255,255,.18)}
+.ndflag svg{width:clamp(34px,5.6vmin,46px);height:auto;display:block}
+.ndtt{position:relative;z-index:1;flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:3px}
+.ndtt h3{margin:0;font-size:clamp(18px,1.6vmin + 12px,26px);line-height:1.15;color:#fff;text-shadow:0 2px 0 rgba(20,20,8,.6)}
+.ndrar{padding:1px 10px;border-radius:999px;font-size:11.5px;font-weight:900;color:#1d1d0e;text-shadow:none;box-shadow:0 2px 0 rgba(0,0,0,.35)}
+.ndhd .spr,.ndst{position:relative;z-index:1;flex:0 0 auto}
+.ndst{padding:4px 12px;border-radius:999px;background:rgba(20,40,12,.55);border:1px solid rgba(160,240,140,.5);color:#bff5a8;font-weight:900;font-size:12.5px}
+.ndbody{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:14px;padding:12px 16px 4px}
+.ndart{position:relative;min-height:150px;border-radius:16px;border:3px solid #34351f;overflow:hidden;background:radial-gradient(ellipse at 50% 46%,rgba(255,255,255,.34),transparent 62%),linear-gradient(160deg,var(--tca),transparent 70%),linear-gradient(180deg,#a29f68,#6c6a40);box-shadow:inset 0 2px 0 rgba(255,255,255,.2),0 4px 0 rgba(30,31,17,.55)}
+.ndart::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.08) 1px,transparent 1px);background-size:22px 22px}
+.ndart img{position:absolute;left:4%;top:4%;width:92%;height:92%;object-fit:contain;transform:scale(1.15);filter:drop-shadow(0 10px 8px rgba(0,0,0,.45))}
+.ndinfo{min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-bottom:6px;overscroll-behavior:contain}
+.ndet .ndtheme{margin:0;font-size:clamp(14px,.8vmin + 10px,17px);font-weight:900;color:#ffd85a;line-height:1.4}
+.ndperk{display:flex;align-items:flex-start;gap:9px;padding:8px 10px;border-radius:12px;background:rgba(30,31,17,.42);border:1px solid rgba(255,216,90,.35)}
+.ndperk svg{flex:0 0 auto;width:20px;height:20px;fill:#ffd85a;filter:drop-shadow(0 1.5px 0 rgba(20,20,8,.5))}
+.ndperk small{display:block;font-size:11px;font-weight:800;color:var(--dim)}
+.ndperk b{display:block;font-size:13px;line-height:1.55;color:#fff}
+.ndsub{font-size:11.5px;font-weight:900;color:var(--dim)}
+.ndunits{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.ndunits figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 4px;border-radius:11px;background:rgba(40,42,24,.5);border:1px solid rgba(235,230,190,.16)}
+.ndunits img{width:100%;aspect-ratio:4/3;object-fit:contain;filter:drop-shadow(0 3px 2px rgba(0,0,0,.35))}
+.ndunits figcaption{max-width:100%;font-size:10.5px;font-weight:800;line-height:1.3;color:var(--mute);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ndet .dneed{margin:0;justify-content:flex-start;font-size:12.5px;line-height:1.6}
+@media (max-width:600px){.ndbody{grid-template-columns:1fr}.ndart{min-height:0;height:clamp(110px,26vh,170px)}}
+@media (max-height:420px){.ndhd{padding:7px 14px}.ndbody{padding:10px 14px 2px;gap:12px}.mbox.ndbox>.row{padding:8px 14px 10px}.ndart{min-height:120px}}
+/* the other shop popups (maps, troops, camouflage) go side by side on short landscape screens, so the buttons stay visible */
+.mbox.sdbox{max-height:calc(100vh - 20px);max-height:calc(100dvh - 20px)}
+@media (max-height:520px) and (min-width:600px){
+.sdbox .sdet{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);column-gap:16px;row-gap:6px;align-content:start;text-align:start;width:min(594px,calc(100vw - 72px))}
+.sdbox .sdet>*{grid-column:2}
+.sdbox .sdet>.sdpv{grid-column:1;grid-row:1 / span 8;align-self:start}
+.sdbox .sdpv .pv{max-width:none}
+.sdbox .dchips,.sdbox .dneed{justify-content:flex-start}
+}

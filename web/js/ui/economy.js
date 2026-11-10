@@ -105,7 +105,7 @@ const CRATES = [
 const GEM_PROMO = { inf: 1, veh: 2, air: 3 };          // per unit, per rank
 const gemRush = (rem, cost) => clamp(Math.ceil(rem * (cost || 800) / 260), 2, 30); // finish a construction now (rem = 0..1 left)
 const Eco = (function () {
-  const MAP_THEME_N = { desert: 'صحراء', snow: 'ثلوج', temperate: 'غابات', mountain: 'جبال', steppe: 'سهوب', mixed: 'متنوعة' };
+  const MAP_THEME_N = { desert: 'صحراء', snow: 'ثلوج', temperate: 'غابات', mountain: 'جبال', steppe: 'سهوب', mixed: 'متنوعة', lava: 'براكين' };
   const CAMO_TYPE_N = { blotch: 'بقع', digital: 'رقمي', flecks: 'نقاط', splinter: 'شظايا', tiger: 'خطوط', scales: 'حراشف', carbon: 'منسوج', metal: 'معدني لامع', lava: 'متوهّج', galaxy: 'كوني' };
   const def = () => ({ v: 2, c: START_WALLET.c, m: START_WALLET.m, g: START_WALLET.g, s: START_WALLET.s, own: { map: [], nat: [], camo: [], troop: [] }, eq: '', login: { n: 0, last: '', streak: 0 }, wheel: { last: '', n: 0 }, mis: {}, misDone: 0, ach: {}, lv: {}, earned: { c: 0, m: 0, g: 0, s: 0 }, tut: 0, streak: { 0: 0, 1: 0, 2: 0 } });
   let normFor = null;
