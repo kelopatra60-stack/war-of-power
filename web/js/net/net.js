@@ -29,14 +29,14 @@ const Net = (function () {
       let done = false; const fail = e => { if (done) return; done = true; welcome = null; st = 'off'; try { if (tr) tr.close(); } catch (x) { } tr = null; rej(e); };
       welcome = { res: v => { if (!done) { done = true; res(v); } }, rej: fail };
       const hello = () => raw('#hello|' + clean(name) + '|' + (wantHost ? 1 : 0) + '|' + NET_VER);
-      if (native()) {
-        const [h, p] = String(addr || '127.0.0.1').split(':'); tr = { send: l => TWNative.send(l), close: () => TWNative.disconnect() };
-        nativeH = { open: hello, line: onLine, close: () => { if (!done) fail('closed'); else onClose(); }, error: e => fail(e || 'error') };
-        try { TWNative.connect(h, +(p || 47700)); } catch (e) { fail('native'); }
-      } else if (addr && addr.rtc) { // WebRTC data channel (online room, js/net/rtc.js)
+      if (addr && addr.rtc) { // WebRTC data channel (online room, js/net/rtc.js) — also inside the Android app, so it comes before the LAN bridge
         const t = addr.rtc; const cid = ++connId; tr = { send: l => t.send(l), close: () => t.close() };
         t.on({ open: () => { if (cid === connId) hello(); }, line: l => { if (cid === connId) onLine(l); }, close: () => { if (cid !== connId) return; if (!done) fail('closed'); else onClose(); } });
         t.start();
+      } else if (native()) { // hotspot game inside the Android app: NetBridge.java
+        const [h, p] = String(addr || '127.0.0.1').split(':'); tr = { send: l => TWNative.send(l), close: () => TWNative.disconnect() };
+        nativeH = { open: hello, line: onLine, close: () => { if (!done) fail('closed'); else onClose(); }, error: e => fail(e || 'error') };
+        try { TWNative.connect(h, +(p || 47700)); } catch (e) { fail('native'); }
       } else {
         let url; if (!addr) url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws'; else url = 'ws://' + (String(addr).includes(':') ? addr : addr + ':47700') + '/ws';
         let ws; try { ws = new WebSocket(url); } catch (e) { fail('ws'); return; }
@@ -208,8 +208,8 @@ const Net = (function () {
   // online over the internet: code empty → open a new room; otherwise join that room (WebRTC P2P)
   async function online(code, name) {
     if (!RTC.supported()) throw new Error('nortc');
-    if (!code) { const r = await RTC.host(); await connect({ rtc: r.t }, true, name || Profile.name); roomCode = r.code; return r.code; }
-    const t = await RTC.join(code); await connect({ rtc: t }, false, name || Profile.name); roomCode = String(code).toUpperCase(); return roomCode;
+    if (!code) { const r = await RTC.host(); try { await connect({ rtc: r.t }, true, name || Profile.name); } catch (e) { try { r.t.close(); } catch (x) { } throw e; } roomCode = r.code; return r.code; }
+    const t = await RTC.join(code); try { await connect({ rtc: t }, false, name || Profile.name); } catch (e) { try { t.close(); } catch (x) { } throw e; } roomCode = String(code).toUpperCase(); return roomCode;
   }
   function ips() { try { if (native() && TWNative.ips) return String(TWNative.ips()).split(',').filter(Boolean); } catch (e) { } return servedByHost() ? [location.hostname] : []; }
   return { online, get roomCode() { return roomCode; }, host, join, leave, scan, hosts: list, ips, native, canHost, servedByHost, status, backToLobby, spectate, L, on: (k, f) => { ui[k] = f; },  get state() { return st; }, get isHost() { return isHost; }, get myId() { return myId; }, get lobby() { return lobby; },   get slot() { return slot; } };

@@ -8,7 +8,7 @@ const Lobby = (function () {
   const K = UI.kit; const { esc, fm } = K; const chat = []; let autoTried = false;
   const ERR = { full: 'الغرفة ممتلئة (6 لاعبين)', nohost: 'لا توجد معركة منشأة على هذا الجهاز بعد', busy: 'المعركة بدأت بالفعل — انتظر حتى تنتهي', timeout: 'تعذّر الوصول إلى المضيف — تأكد أنكم على نفس الشبكة', error: 'تعذّر الاتصال بالمضيف', closed: 'أُغلق الاتصال', native: 'تعذّر تشغيل الشبكة' };
   Object.assign(ERR, { noroom: 'لا توجد غرفة بهذا الرمز', code: 'رمز الغرفة 5 أحرف', nosignal: 'تعذّر الوصول إلى خادم الربط — تحقّق من الإنترنت', taken: 'حاول مرة أخرى', timeout: 'انتهت مهلة الاتصال — تأكد من الرمز والإنترنت', rtc: 'تعذّر إنشاء الاتصال المباشر', nortc: 'جهازك لا يدعم الاتصال المباشر', ver: 'نسخة اللعبة عند المضيف مختلفة', closed: 'انقطع الاتصال' });
-  const errMsg = e => ERR[String(e && e.message || e)] || ('تعذّر الاتصال: ' + String(e && e.message || e));
+  const errMsg = e => { const k = typeof e === 'string' ? e : String(e && e.message || ''); return ERR[k] || (k && !/^\[object/.test(k) ? 'تعذّر الاتصال: ' + k : 'تعذّر الاتصال — حاول مرة أخرى'); };
   function open() { if (Net.state === 'lobby') room(); else choose(); }
   const MP_ICO = { hot: '<path d="M5 13a10 10 0 0 1 14 0M8.5 16.5a5 5 0 0 1 7 0"/><circle cx="12" cy="20" r="1.3"/><path d="M2 9.5a15 15 0 0 1 20 0"/>', web: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/>' };
   function choose() { // two ways to play together
