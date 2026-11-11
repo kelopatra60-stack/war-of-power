@@ -1,0 +1,12 @@
+War of Power — جميع الحقوق محفوظة / All rights reserved
+© 2026 محمد فادي سيف (Mohammad Fadi Saif) — سوريا (Syria)
+
+هذه اللعبة بكل ما فيها (الشيفرة البرمجية، الرسوم، الأصوات، النصوص، التصميم) ملك حصري لمالكها محمد فادي سيف.
+لا يجوز نسخها أو تعديلها أو إعادة نشرها أو بيعها أو استخدام أي جزء منها دون إذن خطي مسبق من المالك.
+
+This game and everything in it (source code, artwork, sound, text, design) is the exclusive property of
+Mohammad Fadi Saif. No part of it may be copied, modified, redistributed, sold or reused without the owner's
+prior written permission.
+
+ملفات اللعبة المنشورة موقّعة رقمياً بمفتاح المالك (ECDSA P-256)؛ أي نسخة معدّلة تفقد التوقيع.
+The published game files are digitally signed with the owner's key (ECDSA P-256); a modified copy loses the signature.

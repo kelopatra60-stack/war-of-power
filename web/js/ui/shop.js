@@ -1,130 +1,16 @@
-/* ============================================================
-   War of Power — المتجر: الخرائط والدول والتمويهات والقوات، مصنّفة شائع · نادر · ذهبي · أسطوري
-   الملف: js/ui/shop.js   ·   يُحمَّل بعد menus.js
-   ============================================================ */
-'use strict';
-/* Side bar with the four sections; each section is filtered by rarity and grouped under rarity headers.
-   Every card wears its rarity colour (common khaki · rare blue · gold · legendary purple with a moving shine).
-   Prices: common/rare in coins, gold in medals, legendary in legendary shards (see js/ui/economy.js).
-   Tapping a card opens its details: buy, equip a camouflage, pick a nation, play a map; bought troops join every nation's production.
-   The wallet (coins · gems · medals · shards) is shown here and on the commander screen only. */
-const Shop = (function () {
-  const K = UI.kit; const { esc, fm, icon } = K;
-  const SECT = [['map', 'الخرائط', Eco.KICO.map], ['nat', 'الدول', Eco.KICO.nat], ['camo', 'التمويهات', Eco.KICO.camo], ['troop', 'القوات', Eco.KICO.troop], ['ex', 'الصرافة', '<circle cx="12" cy="12" r="9"/><path d="M7.5 10h9l-2.6-2.6M16.5 14h-9l2.6 2.6"/>']];
-  const leftT = ms => { const m = Math.max(1, Math.floor(ms / 60000)); const h = Math.floor(m / 60); return h ? h + ' س ' + (m % 60) + ' د' : (m % 60) + ' دقيقة'; };
-  // «الصرافة»: trade one currency for another; each offer a few times a day
-  function exBody() {
-    const X = Eco.exchange(); const chips = rw => Object.keys(rw).map(k => `<span class="exv ${k}">${Eco.ico(k)}<b>${fm(rw[k])}</b><i>${CUR_N[k]}</i></span>`).join('');
-    return `<div class="exhead"><b>الصرافة</b><span>يتجدد الحد اليومي خلال ${leftT(X.reset)}</span></div>
+/*! War of Power — © 2026 محمد فادي سيف (Mohammad Fadi Saif) — سوريا (Syria). جميع الحقوق محفوظة للمالك فقط · All rights reserved to the owner only. Unauthorized copying, modification, redistribution or sale is prohibited. */
+"use strict";const Shop=(function(){const l=UI.kit,{esc:r,fm:$,icon:O}=l,w=[["map","الخرائط",Eco.KICO.map],["nat","الدول",Eco.KICO.nat],["camo","التمويهات",Eco.KICO.camo],["troop","القوات",Eco.KICO.troop],["ex","الصرافة",'<circle cx="12" cy="12" r="9"/><path d="M7.5 10h9l-2.6-2.6M16.5 14h-9l2.6 2.6"/>']],U=s=>{const c=Math.max(1,Math.floor(s/6e4)),a=Math.floor(c/60);return a?a+" س "+c%60+" د":c%60+" دقيقة"};function j(){const s=Eco.exchange(),c=a=>Object.keys(a).map(t=>`<span class="exv ${t}">${Eco.ico(t)}<b>${$(a[t])}</b><i>${CUR_N[t]}</i></span>`).join("");return`<div class="exhead"><b>الصرافة</b><span>يتجدد الحد اليومي خلال ${U(s.reset)}</span></div>
       <p class="shnote">بدّل عملاتك بسعر الصرافة. الأسعار تأخذ عمولة، ولكل عرض عدد مرات محدود في اليوم يتجدد بعد منتصف الليل.</p>
-      <div class="exgrid">${X.list.map(o => `<div class="exc${o.can ? '' : ' no'}"><div class="exr"><span class="exa">${chips(o.from)}</span><svg class="exar" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H5M10 6.5L4.5 12l5.5 5.5"/></svg><span class="exa to">${chips(o.to)}</span></div>
-        <div class="exf"><span class="exl">متبقٍ اليوم <b><bdi dir="ltr">${o.left}/${o.max}</bdi></b></span><button class="btn ${o.can ? 'pri' : ''} sm" data-a="xs_${o.id}"${o.left ? '' : ' disabled'}>${o.left ? 'صرف' : 'نفد اليوم'}</button></div></div>`).join('')}</div>`;
-  }
-  const LOCK = '<svg viewBox="0 0 24 24" class="lk" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2.2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/><circle cx="12" cy="15.5" r="1.3"/></svg>';
-  let sect = 'map', filt = 'all', backFn = null;
-  const myF = () => Menus.pickGet().f;
-  // pointed, gold-edged currency plates (the only place besides the commander screen where the balance shows)
-  function wallet() { const b = Eco.bal(); return `<div class="wallet">${['c', 'g', 'm', 's'].map(k => `<button class="wchip ${k}" data-a="earn" aria-label="${CUR_N[k]}"><span class="wci">${Eco.ico(k)}<b>${fm(b[k])}</b></span></button>`).join('')}</div>`; }
-  const ARROW = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12h16M13.5 5.5l6.5 6.5-6.5 6.5"/></svg>';
-  const head = t => `<div class="shead"><button class="btn ghost back" data-a="sback" aria-label="رجوع">${ARROW}</button><h2>${t}</h2>${wallet()}</div>`;
-  const price = it => `<span class="spr ${it.cur}${Eco.afford(it) ? '' : ' no'}">${Eco.ico(it.cur)}<b>${fm(it.price)}</b></span>`;
-  const troopUnit = id => myF() + '_' + id;
-  // picture of an item: map = minimap · nation = flag + main tank · camouflage = swatch + your tank wearing it · troop = the unit in your nation's paint
-  function prev(it) {
-    if (it.kind === 'map') return `<span class="pv pmap" data-bgprev="${it.id}"></span>`;
-    if (it.kind === 'nat') return `<span class="pv pnat" style="${K.tcv(TEAMCOL[FACTIONS[it.id].col])}"><span class="pflag">${EMBLEM[it.id]}</span><img data-u="${it.id}_mbt" alt=""></span>`;
-    if (it.kind === 'troop') return `<span class="pv ptroop r-${it.r}"><img data-u="${troopUnit(it.id)}" alt=""></span>`;
-    return `<span class="pv pcamo" style="background-image:url(${Menus.camoURL(it.id || FACTIONS[myF()].camo0)})"><img data-cm="${it.id || '-'}" alt=""></span>`;
-  }
-  function fill(root) {
-    root.querySelectorAll('[data-bgprev]').forEach(e => { const d = MAPS.find(m => m.id === e.dataset.bgprev); if (d) Menus.preview(d, url => { if (url && e.isConnected) e.style.backgroundImage = `url(${url})`; }); });
-    root.querySelectorAll('img[data-u]').forEach(im => { if (UNITS[im.dataset.u]) icon(im, 'u', im.dataset.u); });
-    const f = myF(); root.querySelectorAll('img[data-cm]').forEach(im => Icons.camo(f + '_mbt', im.dataset.cm, url => { if (url && im.isConnected) { im.src = url; im.classList.add('ok'); } }));
-  }
-  function card(it) {
-    const st = it.own ? (it.eq ? '<span class="sst eq">✓ مُجهّز</span>' : '<span class="sst">✓ مملوك</span>') : price(it);
-    return `<button class="sitem r-${it.r}${it.own ? ' own' : ''}" data-a="it_${it.id || 'def'}">${prev(it)}<span class="srar">${RARITY[it.r].n}</span>${it.own ? '' : `<span class="slock">${LOCK}</span>`}<span class="snm"><b>${esc(it.n)}</b><em>${esc(it.sub)}</em></span>${st}</button>`;
-  }
-  // open from anywhere; `back` (optional) is where the back button returns (default: main menu)
-  function open(s0, back) { backFn = back || null; filt = 'all'; screen(s0 || sect); }
-  function screen(s0, f0) {
-    if (s0) sect = s0; if (f0) filt = f0;
-    if (sect === 'ex') { const s = K.showScreen(head('المتجر') + `<div class="ubox"><div class="umain">${exBody()}</div><nav class="uside">${SECT.map(([k, n, ic]) => `<button class="${k === sect ? 'on' : ''}" data-a="sc_${k}"><svg viewBox="0 0 24 24">${ic}</svg><span>${n}</span></button>`).join('')}</nav></div>`, 'setup shop', MODE_AC.home);
-      const map = { sback: () => { const b = backFn; backFn = null; if (b) b(); else Menus.hub(); }, earn: () => earnInfo() }; for (const [k] of SECT) map['sc_' + k] = () => screen(k, 'all');
-      for (const o of Eco.exchange().list) map['xs_' + o.id] = () => { const r = Eco.swap(o.id); if (r.err) { SND.ui('nomoney'); K.toast(r.err, 'warn'); return; } SND.ui('buy'); Rewards.pop(r.parts, 'تم الصرف'); screen(); };
-      K.bind(s, map); return; }
-    const list = Eco.items(sect), own = list.filter(x => x.own).length;
-    const groups = RAR_ORDER.filter(r => filt === 'all' || filt === r).map(r => [r, list.filter(x => x.r === r)]).filter(g => g[1].length);
-    const note = sect === 'troop' ? '<p class="shnote">قوات خاصة خيالية تعمل مع كل الدول: بعد شرائها تظهر في الثكنة أو المصنع أو المطار لأي دولة تلعب بها.</p>' : '';
-    const body = `<div class="shbar"><div class="rchips">${['all'].concat(RAR_ORDER).map(r => `<button class="rchip r-${r}${filt === r ? ' sel' : ''}" data-a="rf_${r}">${r === 'all' ? 'الكل' : '<i></i>' + RARITY[r].n}</button>`).join('')}</div><span class="shown">${own}/${list.length} مملوك</span></div>${note}
-      <div class="sgroups">${groups.map(([r, its]) => `<section class="rgrp r-${r}"><div class="rhd"><b>${RARITY[r].n}</b><i></i><span>${its.filter(x => x.own).length}/${its.length}</span></div><div class="sgrid k-${sect}">${its.map(card).join('')}</div></section>`).join('')}</div>`;
-    const s = K.showScreen(head('المتجر') + `<div class="ubox"><div class="umain">${body}</div><nav class="uside">${SECT.map(([k, n, ic]) => `<button class="${k === sect ? 'on' : ''}" data-a="sc_${k}"><svg viewBox="0 0 24 24">${ic}</svg><span>${n}</span></button>`).join('')}</nav></div>`, 'setup shop', MODE_AC.home);
-    fill(s);
-    const map = { sback: () => { const b = backFn; backFn = null; if (b) b(); else Menus.hub(); }, earn: () => earnInfo() };
-    for (const [k] of SECT) map['sc_' + k] = () => screen(k, 'all');
-    for (const r of ['all'].concat(RAR_ORDER)) map['rf_' + r] = () => screen(null, r);
-    for (const it of list) map['it_' + (it.id || 'def')] = () => detail(sect, it.id, () => screen());
-    K.bind(s, map);
-  }
-  /* ---------- item details (also opened from the locked cards in battle setup) ---------- */
-  /* nation card: a header band in the nation's colour (flag, name, rarity, price or ownership), the tank beside the details
-     (theme, perk, three signature units). The box fits a landscape phone: the details scroll, the buttons always stay on screen. */
-  const STAR = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>';
-  function natDetail(id, after) {
-    const it = Eco.item('nat', id); if (!it) return; const F = FACTIONS[id], b = Eco.bal(); const cur = it.own && (Menus.pickGet() || {}).f === id;
-    const air = UNITS[id + '_jet'] ? id + '_jet' : id + '_heli';
-    const unit = u => `<figure><img data-u="${u}" alt=""><figcaption>${esc((UNITS[u] || {}).n || '')}</figcaption></figure>`;
-    const short = it.own ? 0 : it.price - b[it.cur];
-    const tag = it.own ? `<span class="ndst">${cur ? '✓ دولتك الحالية' : '✓ مملوك'}</span>` : price(it);
-    const html = `<div class="ndet" style="${K.tcv(TEAMCOL[F.col])}">
-      <div class="ndhd"><span class="ndflag">${EMBLEM[id]}</span><div class="ndtt"><h3>${esc(it.n)}</h3><span class="ndrar" style="background:${RARITY[it.r].col}">${RARITY[it.r].n} · ${KIND_N.nat}</span></div>${tag}</div>
-      <div class="ndbody"><div class="ndart"><img data-u="${id}_mbt" alt=""></div>
-        <div class="ndinfo"><p class="ndtheme">${esc(F.theme)}</p>
-          <div class="ndperk">${STAR}<div><small>ميزة الدولة</small><b>${esc(F.perk)}</b></div></div>
-          <div class="ndsub">أبرز وحداتها</div><div class="ndunits">${unit(id + '_mbt')}${unit(air)}${unit(id + '_rifle')}</div>
-          ${short > 0 ? `<p class="dneed">ينقصك ${Eco.ico(it.cur)}<b>${fm(short)}</b> ${CUR_N[it.cur]}${it.cur === 's' ? ' — القصاصات الأسطورية تُجمع من الإنجازات الصعبة.' : ' — اجمعها من المعارك والمكافآت.'}</p>` : ''}</div></div></div>`;
-    const acts = [];
-    if (!it.own) acts.push(short > 0 ? { l: it.cur === 's' ? 'كيف أجمع القصاصات؟' : 'احصل على المزيد', cls: 'pri', fn: () => Rewards.open(it.cur === 's' ? 'shard' : null, after) } : { l: `شراء ${Eco.ico(it.cur)}${fm(it.price)}`, cls: 'pri', fn: () => buy('nat', id, after) });
-    else acts.push(cur ? { l: '✓ دولتك الحالية', cls: 'pri' } : { l: 'اختيار كدولتك', cls: 'pri', fn: () => { use('nat', id); K.toast('دولتك الآن: ' + it.n, 'good'); if (after) after(); } });
-    acts.push({ l: 'إغلاق' });
-    K.box(html, acts, { cls: 'ndbox', bind: d => fill(d) });
-  }
-  function detail(k, id, after) {
-    const it = Eco.item(k, id); if (!it) return; const b = Eco.bal();
-    if (k === 'nat') { natDetail(id, after); return; }
-    let info = '';
-    if (k === 'map') { const M = MAPS.find(m => m.id === id); info = `<p>${esc(M.d)}</p><div class="dchips"><i>${esc(it.sub)}</i><i><bdi dir="ltr">${M.w}×${M.h}</bdi></i></div>`; }
-    else if (k === 'nat') { const F = FACTIONS[id]; info = `<p><b>${esc(F.theme)}</b></p><p class="muted">${esc(F.perk)}</p><div class="dunits"><img data-u="${id}_mbt" alt=""><img data-u="${UNITS[id + '_jet'] ? id + '_jet' : id + '_heli'}" alt=""><img data-u="${id}_rifle" alt=""></div>`; }
-    else if (k === 'troop') { const u = UNITS[troopUnit(id)] || {}; const P = { barracks: 'الثكنة', factory: 'مصنع المركبات', airfield: 'المطار' };
-      info = `<p>${esc(u.d || '')}</p><div class="dchips"><i>التحمّل ${fm(Math.round((u.hp || 0) * UNIT_HP_K))}</i><i>السرعة ${u.speed || 0}</i><i>الكلفة في المعركة $${fm(u.cost || 0)}</i><i>تُنتج في ${P[u.build] || ''}${(u.req || []).includes('ops') ? ' (تحتاج غرفة العمليات)' : ''}</i></div><p class="muted">تعمل مع كل الدول وتُطلى بألوان دولتك.</p>`; }
-    else info = `<p class="muted">${it.id ? 'يُطلى به كل مركبات دولتك في المعارك.' : 'كل دولة تقاتل بطلائها الأصلي.'}</p>`;
-    const short = it.own ? 0 : it.price - b[it.cur];
-    const html = `<div class="sdet r-${it.r}"><div class="sdhd"><span class="srar">${RARITY[it.r].n} · ${KIND_N[k]}</span><h3>${esc(it.n)}</h3></div><div class="sdpv">${prev(it)}</div>${info}
-      ${short > 0 ? `<p class="dneed">ينقصك ${Eco.ico(it.cur)}<b>${fm(short)}</b> ${CUR_N[it.cur]}${it.cur === 's' ? ' — القصاصات الأسطورية تُجمع من الإنجازات الصعبة.' : ' — اجمعها من المعارك والمكافآت.'}</p>` : ''}</div>`;
-    const acts = [];
-    if (!it.own) acts.push(short > 0 ? { l: it.cur === 's' ? 'كيف أجمع القصاصات؟' : 'احصل على المزيد', cls: 'pri', fn: () => Rewards.open(it.cur === 's' ? 'shard' : null, after) } : { l: `شراء ${Eco.ico(it.cur)}${fm(it.price)}`, cls: 'pri', fn: () => buy(k, id, after) });
-    else if (k === 'camo') acts.push(it.eq ? { l: '✓ مُجهّز', cls: 'pri' } : { l: 'تجهيز', cls: 'pri', fn: () => { use(k, id); SND.ui('buy'); K.toast('تم تجهيز ' + it.n, 'good'); if (after) after(); } });
-    else if (k === 'nat') acts.push({ l: 'اختيار كدولتك', cls: 'pri', fn: () => { use(k, id); K.toast('دولتك الآن: ' + it.n, 'good'); if (after) after(); } });
-    else if (k === 'map') acts.push({ l: 'العب عليها', cls: 'pri', fn: () => { use(k, id); Menus.battle(); } });
-    acts.push({ l: 'إغلاق' });
-    K.box(html, acts, { wide: true, cls: 'sdbox', bind: d => fill(d) });
-  }
-  // a bought or chosen item becomes the current choice (nation, map or worn camouflage)
-  function use(k, id) { if (k === 'camo') { Eco.equip(id); Menus.pickSet('camo', id); } else if (k === 'nat' || k === 'map') Menus.pickSet(k === 'nat' ? 'f' : 'map', id); }
-  function buy(k, id, after) {
-    const it = Eco.item(k, id); if (!it || it.own) return;
-    if (!Eco.buy(k, id)) { SND.ui('nomoney'); K.toast('رصيدك لا يكفي', 'warn'); return; }
-    use(k, id); SND.ui('buy');
-    Rewards.pop([{ item: [k, it.id] }], 'تم الشراء!', k === 'camo' ? 'تم تجهيزه لمعاركك القادمة.' : k === 'nat' ? 'أصبحت دولتك في المعارك.' : k === 'troop' ? 'ستجدها في قائمة الإنتاج مع أي دولة.' : 'جاهزة في قائمة ساحات المعركة.');
-    if (after) after();
-  }
-  function earnInfo() {
-    const row = (k, t) => `<div>${Eco.ico(k)}<b>${CUR_N[k]}</b><span>${t}</span></div>`;
-    K.box(`<h3 style="margin-bottom:10px">كيف تجمع الأموال؟</h3><div class="earn">${row('c', 'من كل معركة، والمهام، ومكافآت التسجيل اليومية، وعجلة الحظ. تشتري بها العناصر الشائعة والنادرة.')}
-      ${row('g', 'من التسجيل اليومي والمهام والإنجازات والانتصار على الصعب والوحشي. تنفقها داخل المعركة لترقية جنودك وإنهاء البناء فوراً.')}
-      ${row('m', 'من الإنجازات ومكافآت الرتب والمهام الأسبوعية والتحدي اليومي. تشتري بها العناصر الذهبية.')}
-      ${row('s', 'نادرة جداً: الفوز على الوحشي، والمهام الصعبة، و7 أيام تسجيل متتالية، و10 انتصارات متتالية على السهل أو 5 على المتوسط أو 3 على الصعب. بها تشتري كل العناصر الأسطورية.')}</div>`,
-      [{ l: 'المكافآت', cls: 'pri', fn: () => Rewards.open() }, { l: 'إغلاق' }]);
-  }
-  return { open, screen, detail, offer: detail, prev, fill, LOCK, price, ARROW };
-})();
+      <div class="exgrid">${s.list.map(a=>`<div class="exc${a.can?"":" no"}"><div class="exr"><span class="exa">${c(a.from)}</span><svg class="exar" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H5M10 6.5L4.5 12l5.5 5.5"/></svg><span class="exa to">${c(a.to)}</span></div>
+        <div class="exf"><span class="exl">متبقٍ اليوم <b><bdi dir="ltr">${a.left}/${a.max}</bdi></b></span><button class="btn ${a.can?"pri":""} sm" data-a="xs_${a.id}"${a.left?"":" disabled"}>${a.left?"صرف":"نفد اليوم"}</button></div></div>`).join("")}</div>`}const S='<svg viewBox="0 0 24 24" class="lk" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="2.2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/><circle cx="12" cy="15.5" r="1.3"/></svg>';let v="map",m="all",g=null;const _=()=>Menus.pickGet().f;function D(){const s=Eco.bal();return`<div class="wallet">${["c","g","m","s"].map(c=>`<button class="wchip ${c}" data-a="earn" aria-label="${CUR_N[c]}"><span class="wci">${Eco.ico(c)}<b>${$(s[c])}</b></span></button>`).join("")}</div>`}const y='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12h16M13.5 5.5l6.5 6.5-6.5 6.5"/></svg>',A=s=>`<div class="shead"><button class="btn ghost back" data-a="sback" aria-label="رجوع">${y}</button><h2>${s}</h2>${D()}</div>`,x=s=>`<span class="spr ${s.cur}${Eco.afford(s)?"":" no"}">${Eco.ico(s.cur)}<b>${$(s.price)}</b></span>`,N=s=>_()+"_"+s;function M(s){return s.kind==="map"?`<span class="pv pmap" data-bgprev="${s.id}"></span>`:s.kind==="nat"?`<span class="pv pnat" style="${l.tcv(TEAMCOL[FACTIONS[s.id].col])}"><span class="pflag">${EMBLEM[s.id]}</span><img data-u="${s.id}_mbt" alt=""></span>`:s.kind==="troop"?`<span class="pv ptroop r-${s.r}"><img data-u="${N(s.id)}" alt=""></span>`:`<span class="pv pcamo" style="background-image:url(${Menus.camoURL(s.id||FACTIONS[_()].camo0)})"><img data-cm="${s.id||"-"}" alt=""></span>`}function R(s){s.querySelectorAll("[data-bgprev]").forEach(a=>{const t=MAPS.find(p=>p.id===a.dataset.bgprev);t&&Menus.preview(t,p=>{p&&a.isConnected&&(a.style.backgroundImage=`url(${p})`)})}),s.querySelectorAll("img[data-u]").forEach(a=>{UNITS[a.dataset.u]&&O(a,"u",a.dataset.u)});const c=_();s.querySelectorAll("img[data-cm]").forEach(a=>Icons.camo(c+"_mbt",a.dataset.cm,t=>{t&&a.isConnected&&(a.src=t,a.classList.add("ok"))}))}function B(s){const c=s.own?s.eq?'<span class="sst eq">✓ مُجهّز</span>':'<span class="sst">✓ مملوك</span>':x(s);return`<button class="sitem r-${s.r}${s.own?" own":""}" data-a="it_${s.id||"def"}">${M(s)}<span class="srar">${RARITY[s.r].n}</span>${s.own?"":`<span class="slock">${S}</span>`}<span class="snm"><b>${r(s.n)}</b><em>${r(s.sub)}</em></span>${c}</button>`}function K(s,c){g=c||null,m="all",f(s||v)}function f(s,c){if(s&&(v=s),c&&(m=c),v==="ex"){const n=l.showScreen(A("المتجر")+`<div class="ubox"><div class="umain">${j()}</div><nav class="uside">${w.map(([o,u,F])=>`<button class="${o===v?"on":""}" data-a="sc_${o}"><svg viewBox="0 0 24 24">${F}</svg><span>${u}</span></button>`).join("")}</nav></div>`,"setup shop",MODE_AC.home),i={sback:()=>{const o=g;g=null,o?o():Menus.hub()},earn:()=>T()};for(const[o]of w)i["sc_"+o]=()=>f(o,"all");for(const o of Eco.exchange().list)i["xs_"+o.id]=()=>{const u=Eco.swap(o.id);if(u.err){SND.ui("nomoney"),l.toast(u.err,"warn");return}SND.ui("buy"),Rewards.pop(u.parts,"تم الصرف"),f()};l.bind(n,i);return}const a=Eco.items(v),t=a.filter(n=>n.own).length,p=RAR_ORDER.filter(n=>m==="all"||m===n).map(n=>[n,a.filter(i=>i.r===n)]).filter(n=>n[1].length),d=v==="troop"?'<p class="shnote">قوات خاصة خيالية تعمل مع كل الدول: بعد شرائها تظهر في الثكنة أو المصنع أو المطار لأي دولة تلعب بها.</p>':"",h=`<div class="shbar"><div class="rchips">${["all"].concat(RAR_ORDER).map(n=>`<button class="rchip r-${n}${m===n?" sel":""}" data-a="rf_${n}">${n==="all"?"الكل":"<i></i>"+RARITY[n].n}</button>`).join("")}</div><span class="shown">${t}/${a.length} مملوك</span></div>${d}
+      <div class="sgroups">${p.map(([n,i])=>`<section class="rgrp r-${n}"><div class="rhd"><b>${RARITY[n].n}</b><i></i><span>${i.filter(o=>o.own).length}/${i.length}</span></div><div class="sgrid k-${v}">${i.map(B).join("")}</div></section>`).join("")}</div>`,b=l.showScreen(A("المتجر")+`<div class="ubox"><div class="umain">${h}</div><nav class="uside">${w.map(([n,i,o])=>`<button class="${n===v?"on":""}" data-a="sc_${n}"><svg viewBox="0 0 24 24">${o}</svg><span>${i}</span></button>`).join("")}</nav></div>`,"setup shop",MODE_AC.home);R(b);const e={sback:()=>{const n=g;g=null,n?n():Menus.hub()},earn:()=>T()};for(const[n]of w)e["sc_"+n]=()=>f(n,"all");for(const n of["all"].concat(RAR_ORDER))e["rf_"+n]=()=>f(null,n);for(const n of a)e["it_"+(n.id||"def")]=()=>I(v,n.id,()=>f());l.bind(b,e)}const L='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 16.8l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg>';function q(s,c){const a=Eco.item("nat",s);if(!a)return;const t=FACTIONS[s],p=Eco.bal(),d=a.own&&(Menus.pickGet()||{}).f===s,h=UNITS[s+"_jet"]?s+"_jet":s+"_heli",b=u=>`<figure><img data-u="${u}" alt=""><figcaption>${r((UNITS[u]||{}).n||"")}</figcaption></figure>`,e=a.own?0:a.price-p[a.cur],n=a.own?`<span class="ndst">${d?"✓ دولتك الحالية":"✓ مملوك"}</span>`:x(a),i=`<div class="ndet" style="${l.tcv(TEAMCOL[t.col])}">
+      <div class="ndhd"><span class="ndflag">${EMBLEM[s]}</span><div class="ndtt"><h3>${r(a.n)}</h3><span class="ndrar" style="background:${RARITY[a.r].col}">${RARITY[a.r].n} · ${KIND_N.nat}</span></div>${n}</div>
+      <div class="ndbody"><div class="ndart"><img data-u="${s}_mbt" alt=""></div>
+        <div class="ndinfo"><p class="ndtheme">${r(t.theme)}</p>
+          <div class="ndperk">${L}<div><small>ميزة الدولة</small><b>${r(t.perk)}</b></div></div>
+          <div class="ndsub">أبرز وحداتها</div><div class="ndunits">${b(s+"_mbt")}${b(h)}${b(s+"_rifle")}</div>
+          ${e>0?`<p class="dneed">ينقصك ${Eco.ico(a.cur)}<b>${$(e)}</b> ${CUR_N[a.cur]}${a.cur==="s"?" — القصاصات الأسطورية تُجمع من الإنجازات الصعبة.":" — اجمعها من المعارك والمكافآت."}</p>`:""}</div></div></div>`,o=[];a.own?o.push(d?{l:"✓ دولتك الحالية",cls:"pri"}:{l:"اختيار كدولتك",cls:"pri",fn:()=>{E("nat",s),l.toast("دولتك الآن: "+a.n,"good"),c&&c()}}):o.push(e>0?{l:a.cur==="s"?"كيف أجمع القصاصات؟":"احصل على المزيد",cls:"pri",fn:()=>Rewards.open(a.cur==="s"?"shard":null,c)}:{l:`شراء ${Eco.ico(a.cur)}${$(a.price)}`,cls:"pri",fn:()=>C("nat",s,c)}),o.push({l:"إغلاق"}),l.box(i,o,{cls:"ndbox",bind:u=>R(u)})}function I(s,c,a){const t=Eco.item(s,c);if(!t)return;const p=Eco.bal();if(s==="nat"){q(c,a);return}let d="";if(s==="map"){const n=MAPS.find(i=>i.id===c);d=`<p>${r(n.d)}</p><div class="dchips"><i>${r(t.sub)}</i><i><bdi dir="ltr">${n.w}×${n.h}</bdi></i></div>`}else if(s==="nat"){const n=FACTIONS[c];d=`<p><b>${r(n.theme)}</b></p><p class="muted">${r(n.perk)}</p><div class="dunits"><img data-u="${c}_mbt" alt=""><img data-u="${UNITS[c+"_jet"]?c+"_jet":c+"_heli"}" alt=""><img data-u="${c}_rifle" alt=""></div>`}else if(s==="troop"){const n=UNITS[N(c)]||{},i={barracks:"الثكنة",factory:"مصنع المركبات",airfield:"المطار"};d=`<p>${r(n.d||"")}</p><div class="dchips"><i>التحمّل ${$(Math.round((n.hp||0)*UNIT_HP_K))}</i><i>السرعة ${n.speed||0}</i><i>الكلفة في المعركة $${$(n.cost||0)}</i><i>تُنتج في ${i[n.build]||""}${(n.req||[]).includes("ops")?" (تحتاج غرفة العمليات)":""}</i></div><p class="muted">تعمل مع كل الدول وتُطلى بألوان دولتك.</p>`}else d=`<p class="muted">${t.id?"يُطلى به كل مركبات دولتك في المعارك.":"كل دولة تقاتل بطلائها الأصلي."}</p>`;const h=t.own?0:t.price-p[t.cur],b=`<div class="sdet r-${t.r}"><div class="sdhd"><span class="srar">${RARITY[t.r].n} · ${KIND_N[s]}</span><h3>${r(t.n)}</h3></div><div class="sdpv">${M(t)}</div>${d}
+      ${h>0?`<p class="dneed">ينقصك ${Eco.ico(t.cur)}<b>${$(h)}</b> ${CUR_N[t.cur]}${t.cur==="s"?" — القصاصات الأسطورية تُجمع من الإنجازات الصعبة.":" — اجمعها من المعارك والمكافآت."}</p>`:""}</div>`,e=[];t.own?s==="camo"?e.push(t.eq?{l:"✓ مُجهّز",cls:"pri"}:{l:"تجهيز",cls:"pri",fn:()=>{E(s,c),SND.ui("buy"),l.toast("تم تجهيز "+t.n,"good"),a&&a()}}):s==="nat"?e.push({l:"اختيار كدولتك",cls:"pri",fn:()=>{E(s,c),l.toast("دولتك الآن: "+t.n,"good"),a&&a()}}):s==="map"&&e.push({l:"العب عليها",cls:"pri",fn:()=>{E(s,c),Menus.battle()}}):e.push(h>0?{l:t.cur==="s"?"كيف أجمع القصاصات؟":"احصل على المزيد",cls:"pri",fn:()=>Rewards.open(t.cur==="s"?"shard":null,a)}:{l:`شراء ${Eco.ico(t.cur)}${$(t.price)}`,cls:"pri",fn:()=>C(s,c,a)}),e.push({l:"إغلاق"}),l.box(b,e,{wide:!0,cls:"sdbox",bind:n=>R(n)})}function E(s,c){s==="camo"?(Eco.equip(c),Menus.pickSet("camo",c)):(s==="nat"||s==="map")&&Menus.pickSet(s==="nat"?"f":"map",c)}function C(s,c,a){const t=Eco.item(s,c);if(!(!t||t.own)){if(!Eco.buy(s,c)){SND.ui("nomoney"),l.toast("رصيدك لا يكفي","warn");return}E(s,c),SND.ui("buy"),Rewards.pop([{item:[s,t.id]}],"تم الشراء!",s==="camo"?"تم تجهيزه لمعاركك القادمة.":s==="nat"?"أصبحت دولتك في المعارك.":s==="troop"?"ستجدها في قائمة الإنتاج مع أي دولة.":"جاهزة في قائمة ساحات المعركة."),a&&a()}}function T(){const s=(c,a)=>`<div>${Eco.ico(c)}<b>${CUR_N[c]}</b><span>${a}</span></div>`;l.box(`<h3 style="margin-bottom:10px">كيف تجمع الأموال؟</h3><div class="earn">${s("c","من كل معركة، والمهام، ومكافآت التسجيل اليومية، وعجلة الحظ. تشتري بها العناصر الشائعة والنادرة.")}
+      ${s("g","من التسجيل اليومي والمهام والإنجازات والانتصار على الصعب والوحشي. تنفقها داخل المعركة لترقية جنودك وإنهاء البناء فوراً.")}
+      ${s("m","من الإنجازات ومكافآت الرتب والمهام الأسبوعية والتحدي اليومي. تشتري بها العناصر الذهبية.")}
+      ${s("s","نادرة جداً: الفوز على الوحشي، والمهام الصعبة، و7 أيام تسجيل متتالية، و10 انتصارات متتالية على السهل أو 5 على المتوسط أو 3 على الصعب. بها تشتري كل العناصر الأسطورية.")}</div>`,[{l:"المكافآت",cls:"pri",fn:()=>Rewards.open()},{l:"إغلاق"}])}return{open:K,screen:f,detail:I,offer:I,prev:M,fill:R,LOCK:S,price:x,ARROW:y}})();

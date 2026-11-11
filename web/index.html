@@ -1,10 +1,13 @@
 <!doctype html>
+<!-- War of Power — © 2026 محمد فادي سيف — سوريا · جميع الحقوق محفوظة للمالك فقط · All rights reserved to the owner only -->
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <meta name="theme-color" content="#3a3f29">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="author" content="محمد فادي سيف">
+<meta name="copyright" content="© 2026 محمد فادي سيف — سوريا. جميع الحقوق محفوظة. All rights reserved.">
 <title>War of Power</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Kufi+Arabic:wght@400;600;700;900&display=swap" rel="stylesheet">
@@ -12,12 +15,10 @@
 <link rel="stylesheet" href="css/hud.css">
 </head>
 <body>
-<!-- company splash (1 second): Thank7you -->
 <div id="splash" translate="no" aria-hidden="true"><div class="spbg"></div><div class="spin">
 <svg class="spemb" viewBox="0 0 120 120"><defs><linearGradient id="spG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff4c4"/><stop offset=".45" stop-color="#e2b24a"/><stop offset="1" stop-color="#8a5a12"/></linearGradient></defs><path d="M60 6l44 16v34c0 28-19 48-44 58C35 104 16 84 16 56V22z" fill="none" stroke="url(#spG)" stroke-width="5"/><path d="M60 18l34 12v26c0 22-14 37-34 46-20-9-34-24-34-46V30z" fill="rgba(226,178,74,.12)"/><path d="M36 50l24-14 24 14M36 66l24-14 24 14" fill="none" stroke="url(#spG)" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/><path d="M60 74l4.7 9.6 10.6 1.5-7.7 7.5 1.8 10.5L60 98.1l-9.4 5 1.8-10.5-7.7-7.5 10.6-1.5z" fill="url(#spG)"/></svg>
-<div class="spname"><span>THANK</span><b>7</b><span>YOU</span><i class="spsweep"></i></div><div class="sprule"></div><div class="sptag">PRESENTS</div></div></div>
+<div class="spname"><span>THANK</span><b>7</b><span>YOU</span><i class="spsweep"></i></div><div class="sprule"></div><div class="sptag">PRESENTS</div></div><div class="spcopy">© 2026 محمد فادي سيف — سوريا</div></div>
 <script>setTimeout(function(){var s=document.getElementById('splash');if(s)s.parentNode.removeChild(s);},1100);</script>
-<!-- shared gradients for the gold menu icons, coins and medals (referenced as url(#…) from js/ui/menus.js and js/ui/economy.js) -->
 <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
 <radialGradient id="gGold" cx="38%" cy="30%" r="80%"><stop offset="0" stop-color="#fbf3d6"/><stop offset=".38" stop-color="#d6b86a"/><stop offset=".78" stop-color="#8d6a26"/><stop offset="1" stop-color="#5a4214"/></radialGradient>
 <linearGradient id="gGoldE" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff4c8"/><stop offset="1" stop-color="#5e4616"/></linearGradient>
@@ -48,14 +49,18 @@
 <div id="loading" class="hid"><div class="ldbg"></div><div class="ldfx"></div><div class="ldtop"><div class="ldmode"><b id="lmode"></b><span id="lmap"></span></div></div><div class="ldvs" id="lvs"></div><div class="ldradar" aria-hidden="true"><i></i><b></b><s></s><u></u></div><div class="ldbot"><div class="ldrow"><span id="ltip"></span><b id="lpct">0%</b></div><div class="lb"><i id="lbar"></i></div></div></div>
 <div id="achbox"></div>
 <div id="rot"><svg viewBox="0 0 24 24"><rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg><b>أدر هاتفك أفقيًا</b><span>اللعبة مصممة للوضع العرضي</span></div>
-<!-- ترتيب تحميل ملفات اللعبة مهم: لا تغيّره إلا إذا عرفت ما تفعل (راجع فهرس.md) -->
+<script src="js/core/compat.js"></script>
 <script src="js/core/util.js"></script>
+<script src="js/core/seal.js"></script>
+<script src="js/core/seal_data.js"></script>
 <script src="js/ui/i18n_en.js"></script>
 <script src="js/ui/i18n.js"></script>
 <script src="js/data/units.js"></script>
 <script src="js/data/units_ext.js"></script>
 <script src="js/data/structures_new.js"></script>
 <script src="js/data/units_fx.js"></script>
+<script src="js/data/scorpion.js"></script>
+<script src="js/data/space.js"></script>
 <script src="js/render/gl.js"></script>
 <script src="js/render/painter.js"></script>
 <script src="js/render/terrain_tex.js"></script>
@@ -67,6 +72,8 @@
 <script src="js/art/buildings.js"></script>
 <script src="js/art/buildings_v2.js"></script>
 <script src="js/art/structures_new.js"></script>
+<script src="js/art/scorpion.js"></script>
+<script src="js/art/space.js"></script>
 <script src="js/art/fx_sprites.js"></script>
 <script src="js/art/fx_sprites2.js"></script>
 <script src="js/map/map.js"></script>
@@ -95,6 +102,7 @@
 <script src="js/ui/rewards.js"></script>
 <script src="js/ui/guide.js"></script>
 <script src="js/ui/loading.js"></script>
+<script src="js/render/quality.js"></script>
 <script src="js/modes/skirmish.js"></script>
 <script src="js/modes/tutorial.js"></script>
 <script src="js/modes/survival.js"></script>
